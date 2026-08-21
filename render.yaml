@@ -1,0 +1,43 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Backend Web Service (Node.js / Express / Socket.io)
+  # -------------------------------------------------------------
+  - type: web
+    name: aurelia-hotel-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false # Set your MongoDB Atlas Connection String in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        value: '*'
+
+  # -------------------------------------------------------------
+  # 2. Frontend Static Site (React / Vite)
+  # -------------------------------------------------------------
+  - type: web
+    name: aurelia-hotel-frontend
+    env: static
+    plan: free
+    rootDir: frontend-app
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_BACKEND_URL
+        fromService:
+          type: web
+          name: aurelia-hotel-backend
+          property: host
