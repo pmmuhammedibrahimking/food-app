@@ -340,24 +340,24 @@ export const Dashboard = ({ onOpenNewBookingModal }) => {
   return (
     <div className="space-y-6 text-slate-100">
       {/* Executive Report Export Bar */}
-      <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-900/80 border border-slate-800 p-3 sm:p-4 rounded-xl gap-2.5">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
           <span className="text-xs font-bold text-slate-200">Executive Report Center</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
           <button
             onClick={handleExportDashboardCSV}
-            className="bg-slate-950 hover:bg-slate-800 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-800 text-slate-300 transition-all"
+            className="bg-slate-950 hover:bg-slate-800 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-800 text-slate-300 transition-all min-h-[34px]"
           >
             Export CSV
           </button>
           <button
             onClick={handlePrintDashboardPDF}
-            className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+            className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 min-h-[34px]"
           >
-            <IconPrinter size={14} /> Print PDF Report
+            <IconPrinter size={14} /> <span>Print PDF Report</span>
           </button>
         </div>
       </div>
@@ -543,8 +543,8 @@ export const Dashboard = ({ onOpenNewBookingModal }) => {
             onAction={onOpenNewBookingModal}
           />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="overflow-x-auto rounded-xl border border-slate-800 responsive-table-wrapper">
+            <table className="w-full min-w-[700px] text-left text-xs text-slate-300">
               <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] font-semibold border-b border-slate-800">
                 <tr>
                   <th className="py-3.5 px-4">Booking ID</th>

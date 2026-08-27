@@ -138,7 +138,7 @@ export const Housekeeping = () => {
             onAction={() => setFilterStatus('All')}
           />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <div className="overflow-x-auto rounded-xl border border-slate-800 responsive-table-wrapper">
             <table className="w-full min-w-[750px] text-left text-xs text-slate-300">
               <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] font-semibold border-b border-slate-800">
                 <tr>

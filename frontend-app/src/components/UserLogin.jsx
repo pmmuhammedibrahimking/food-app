@@ -17,8 +17,8 @@ export const UserLogin = () => {
     setError('');
 
     if (mode === 'login') {
-      if (!email || !email.includes('@')) {
-        setError('Please enter a valid guest email address (e.g. guest@resort.com).');
+      if (!email) {
+        setError('Please enter your guest username or email address.');
         return;
       }
       setIsSubmitting(true);
@@ -183,21 +183,21 @@ export const UserLogin = () => {
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="font-semibold text-slate-300">Email Address / Gmail</label>
+              <label className="font-semibold text-slate-300">Guest Username or Email / Gmail</label>
               <button
                 type="button"
                 onClick={() => {
                   setEmail('alexander.wright@royals.co.uk');
-                  setError('Auto-filled VIP Email: alexander.wright@royals.co.uk');
+                  setError('Auto-filled: alexander.wright@royals.co.uk');
                 }}
                 className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline"
               >
-                Forgot Gmail?
+                Auto-Fill
               </button>
             </div>
             <input
-              type="email"
-              placeholder="alexander.wright@royals.co.uk"
+              type="text"
+              placeholder="e.g. alexander or guest@resort.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

@@ -6,7 +6,7 @@ import { EmptyState } from './EmptyState';
 
 export const GuestManagement = () => {
   const { guests = [], bookings = [], addGuestNote, updateGuestTags, updateGuestPreferences, deleteGuest } = useHotel();
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [tagFilter, setTagFilter] = useState('All'); // 'All' | 'VIP' | 'Frequent' | 'Risk'
   const [activeTimelineGuest, setActiveTimelineGuest] = useState(null);
@@ -62,24 +62,23 @@ export const GuestManagement = () => {
     <div className="space-y-6 text-slate-100 font-sans">
       {/* Top Search & Tag Filter Bar */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Tag Filter Pills */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
             {['All', 'VIP', 'Frequent', 'Risk'].map((tag) => (
               <button
                 key={tag}
                 onClick={() => setTagFilter(tag)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  tagFilter === tag
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${tagFilter === tag
                     ? tag === 'VIP'
                       ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-sm'
                       : tag === 'Frequent'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                      : tag === 'Risk'
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-sm'
-                      : 'bg-slate-800 text-slate-100 shadow-sm'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
+                        : tag === 'Risk'
+                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-sm'
+                          : 'bg-slate-800 text-slate-100 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`}
+                  }`}
               >
                 {tag === 'VIP' && '👑 '}
                 {tag === 'Frequent' && '⚡ '}
@@ -92,19 +91,19 @@ export const GuestManagement = () => {
           <div className="hidden sm:block h-6 w-px bg-slate-800" />
 
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-initial min-w-[200px] w-full sm:w-64">
             <IconSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               placeholder="Search guest profiles, email, phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-200 pl-9 pr-3 py-2 rounded-xl focus:outline-none focus:border-amber-500/50 w-64 placeholder-slate-500"
+              className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 pl-9 pr-3 py-2 rounded-xl focus:outline-none focus:border-amber-500/50 placeholder-slate-500"
             />
           </div>
         </div>
 
-        <div className="text-xs text-slate-400 font-medium">
+        <div className="text-xs text-slate-400 font-medium whitespace-nowrap">
           Showing <span className="text-amber-400 font-bold">{filteredGuests.length}</span> CRM guest profiles
         </div>
       </div>
@@ -122,7 +121,7 @@ export const GuestManagement = () => {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredGuests.map((guest) => {
             const guestTags = guest.tags || [];
             const isVip = guestTags.includes('VIP') || guest.vipStatus === 'Diamond' || guest.vipStatus === 'Gold';
@@ -135,51 +134,49 @@ export const GuestManagement = () => {
             return (
               <div
                 key={guest.id}
-                className={`bg-slate-900/90 border rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4 transition-all ${
-                  isVip ? 'border-amber-500/30 bg-slate-900/95' : 'border-slate-800'
-                }`}
+                className={`bg-slate-900/90 border rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-4 transition-all ${isVip ? 'border-amber-500/30 bg-slate-900/95' : 'border-slate-800'
+                  }`}
               >
                 <div className="space-y-4">
-                  {/* Header: Avatar, Name, Email, VIP Badge & Tags */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
+                  {/* Header: Avatar, Name, Email, VIP Badge & Delete Action */}
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base shadow-md ${
-                          isVip
+                        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm sm:text-base shadow-md flex-shrink-0 ${isVip
                             ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 shadow-amber-500/20'
                             : 'bg-slate-800 text-slate-200 border border-slate-700'
-                        }`}
+                          }`}
                       >
                         {guest.name.charAt(0)}
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <h3 className="text-base font-bold text-slate-100">{guest.name}</h3>
-                          {isVip && <IconCrown size={16} className="text-amber-400" />}
+                          <h3 className="text-sm sm:text-base font-bold text-slate-100 truncate" title={guest.name}>{guest.name}</h3>
+                          {isVip && <IconCrown size={15} className="text-amber-400 flex-shrink-0" />}
                         </div>
-                        <div className="text-xs text-slate-400">{guest.email}</div>
-                        <div className="text-[11px] text-amber-400 font-mono">{guest.phone}</div>
+                        <div className="text-[11px] sm:text-xs text-slate-400 truncate" title={guest.email}>{guest.email}</div>
+                        <div className="text-[10.5px] sm:text-[11px] text-amber-400 font-mono truncate">{guest.phone}</div>
                       </div>
                     </div>
 
-                    {/* Tier Badge & Delete Profile Option */}
-                    <div className="flex items-center gap-2">
+                    {/* Tier Badge & Delete Profile Button */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                          isVip
+                        className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-bold border whitespace-nowrap ${isVip
                             ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                             : 'bg-slate-800 text-slate-400 border-slate-700'
-                        }`}
+                          }`}
                       >
                         {guest.vipStatus} Tier
                       </span>
                       <button
                         onClick={() => setGuestToDelete(guest)}
                         title="Delete Guest Profile"
-                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1 text-[11px] font-bold"
+                        className="p-1 sm:p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 transition-all flex items-center justify-center gap-1 text-[10.5px] sm:text-[11px] font-bold h-7 flex-shrink-0"
+                        aria-label="Delete Guest Profile"
                       >
-                        <IconTrash size={13} />
-                        <span className="hidden sm:inline">Delete</span>
+                        <IconTrash size={13} className="flex-shrink-0" />
+                        <span className="hidden 2xl:inline">Delete</span>
                       </button>
                     </div>
                   </div>
@@ -370,13 +367,12 @@ export const GuestManagement = () => {
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-amber-400">{b.id}</span>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                b.status === 'Checked-In'
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${b.status === 'Checked-In'
                                   ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                   : b.status === 'Confirmed'
-                                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              }`}
+                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                }`}
                             >
                               {b.status}
                             </span>

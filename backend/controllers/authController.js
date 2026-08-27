@@ -11,13 +11,14 @@ import { logAuditEvent } from './auditLogController.js';
  */
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, identifier, password } = req.body;
+    const loginTarget = identifier || email || username;
 
-    if (!email || !password) {
-      return errorResponse(res, 400, 'Please provide both email address and password.');
+    if (!loginTarget || !password) {
+      return errorResponse(res, 400, 'Please provide both username/email and password.');
     }
 
-    const user = await findUserByEmail(email);
+    const user = await findUserByEmail(loginTarget);
     if (!user) {
       return errorResponse(res, 401, 'Invalid authentication credentials (user not found).');
     }

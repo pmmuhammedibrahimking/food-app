@@ -19,6 +19,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
+import customerAuthRoutes from './routes/customerAuthRoutes.js';
 import { createRoomServiceRouter } from './routes/roomServiceRoutes.js';
 import { getAllOrders } from './models/roomServiceModel.js';
 import { notFoundHandler, centralErrorHandler } from './middleware/errorMiddleware.js';
@@ -37,7 +38,7 @@ app.use(morgan('dev'));
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token', 'x-customer-token']
 }));
 app.use(express.json());
 
@@ -45,6 +46,7 @@ app.use(express.json());
 app.use('/api/health', healthRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/customer', customerAuthRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/bookings', bookingRoutes);

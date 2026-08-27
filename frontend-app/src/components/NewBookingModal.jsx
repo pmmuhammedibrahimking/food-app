@@ -120,47 +120,50 @@ export const NewBookingModal = ({ isOpen, onClose, defaultRoom = null }) => {
         </div>
 
         {/* Step Progress Bar */}
-        <div className="px-6 py-2.5 bg-slate-950/90 border-b border-slate-800/80 flex items-center justify-between text-xs">
+        <div className="px-3 sm:px-6 py-2 sm:py-2.5 bg-slate-950/90 border-b border-slate-800/80 flex items-center justify-between text-xs gap-1">
           <button
             type="button"
             onClick={() => setActiveStep(1)}
-            className={`flex items-center gap-2 font-bold transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 font-bold transition-colors ${
               activeStep === 1 ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${activeStep === 1 ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>1</span>
-            <span>Guest Profile</span>
+            <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${activeStep === 1 ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>1</span>
+            <span className="hidden xs:inline sm:inline">Guest Profile</span>
+            <span className="xs:hidden">Guest</span>
           </button>
 
-          <span className="text-slate-700">→</span>
+          <span className="text-slate-700 font-bold">→</span>
 
           <button
             type="button"
             onClick={() => setActiveStep(2)}
-            className={`flex items-center gap-2 font-bold transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 font-bold transition-colors ${
               activeStep === 2 ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${activeStep === 2 ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>2</span>
-            <span>Sanctuary & Dates</span>
+            <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${activeStep === 2 ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>2</span>
+            <span className="hidden xs:inline sm:inline">Room & Dates</span>
+            <span className="xs:hidden">Room</span>
           </button>
 
-          <span className="text-slate-700">→</span>
+          <span className="text-slate-700 font-bold">→</span>
 
           <button
             type="button"
             onClick={() => setActiveStep(3)}
-            className={`flex items-center gap-2 font-bold transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 font-bold transition-colors ${
               activeStep === 3 ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${activeStep === 3 ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>3</span>
-            <span>Payment & Folio</span>
+            <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${activeStep === 3 ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>3</span>
+            <span className="hidden xs:inline sm:inline">Payment & Folio</span>
+            <span className="xs:hidden">Folio</span>
           </button>
         </div>
 
         {/* Modal Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+        <form onSubmit={handleSubmit} className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1 text-xs">
           {/* STEP 1: GUEST PROFILE & FAST VIP SELECTOR */}
           {activeStep === 1 && (
             <div className="space-y-4 animate-fade-in">

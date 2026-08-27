@@ -23,10 +23,10 @@
 
   --accent-blue: #3B82F6;
   --accent-blue-light: rgba(59, 130, 246, 0.15);
-  
+
   --success: #10B981;
   --success-bg: rgba(16, 185, 129, 0.15);
-  
+
   --warning: #F59E0B;
   --warning-bg: rgba(245, 158, 11, 0.15);
 
@@ -75,19 +75,23 @@ html.light body {
 html.light .bg-slate-950 {
   background-color: #F8FAFC !important;
 }
+
 html.light .bg-slate-900 {
   background-color: #FFFFFF !important;
   border-color: #E2E8F0 !important;
 }
+
 html.light .bg-slate-950\/80,
 html.light .bg-slate-950\/90,
 html.light .bg-slate-950\/95 {
   background-color: rgba(248, 250, 252, 0.95) !important;
 }
+
 html.light .bg-slate-950\/40,
 html.light .bg-slate-950\/60 {
   background-color: #F1F5F9 !important;
 }
+
 html.light .bg-slate-900\/40,
 html.light .bg-slate-900\/50,
 html.light .bg-slate-900\/60,
@@ -97,12 +101,14 @@ html.light .bg-slate-900\/95 {
   background-color: #FFFFFF !important;
   border-color: #E2E8F0 !important;
 }
+
 html.light .bg-slate-800,
 html.light .bg-slate-800\/80,
 html.light .bg-slate-800\/60 {
   background-color: #E2E8F0 !important;
   color: #1E293B !important;
 }
+
 html.light .border-slate-800,
 html.light .border-slate-800\/60,
 html.light .border-slate-800\/80,
@@ -110,19 +116,24 @@ html.light .border-slate-700,
 html.light .border-slate-700\/60 {
   border-color: #E2E8F0 !important;
 }
+
 html.light .text-slate-100 {
   color: #0F172A !important;
 }
+
 html.light .text-slate-200 {
   color: #1E293B !important;
 }
+
 html.light .text-slate-300,
 html.light .text-slate-400 {
   color: #475569 !important;
 }
+
 html.light .text-slate-500 {
   color: #64748B !important;
 }
+
 html.light input:not(.bg-transparent),
 html.light select:not(.bg-transparent),
 html.light textarea:not(.bg-transparent) {
@@ -130,6 +141,7 @@ html.light textarea:not(.bg-transparent) {
   color: #0F172A !important;
   border-color: #CBD5E1 !important;
 }
+
 html.light input:not(.bg-transparent):focus,
 html.light select:not(.bg-transparent):focus,
 html.light textarea:not(.bg-transparent):focus {
@@ -145,9 +157,11 @@ html.light textarea:not(.bg-transparent):focus {
   outline: none !important;
   padding: 0 !important;
 }
+
 html.light table tbody tr:hover {
   background-color: #F8FAFC !important;
 }
+
 html.light thead {
   background-color: #F1F5F9 !important;
   color: #475569 !important;
@@ -159,7 +173,8 @@ html.light thead {
   padding: 0;
 }
 
-html, body {
+html,
+body {
   overflow-x: hidden;
   max-width: 100vw;
   font-family: var(--font-primary);
@@ -176,7 +191,11 @@ html, body {
 
 /* 44px Minimum Touch Target Rule for Mobile Accessibility */
 @media (max-width: 767px) {
-  button, input, select, textarea {
+
+  button,
+  input,
+  select,
+  textarea {
     min-height: 44px;
     touch-action: manipulation;
   }
@@ -341,17 +360,14 @@ body {
 
 /* Header Styles */
 .header {
-  height: 72px;
-  background-color: rgba(19, 27, 46, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
   position: sticky;
   top: 0;
   z-index: 40;
+  width: 100%;
+  background-color: rgba(19, 27, 46, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .header-left {
@@ -753,8 +769,15 @@ select.form-control option:hover {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Toast System */
@@ -783,8 +806,15 @@ select.form-control option:hover {
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Rooms Grid */
@@ -915,6 +945,7 @@ select.form-control option:hover {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -926,6 +957,7 @@ select.form-control option:hover {
     opacity: 0;
     transform: scale(0.94);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -933,18 +965,24 @@ select.form-control option:hover {
 }
 
 @keyframes floatGentle {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-6px);
   }
 }
 
 @keyframes glowPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
   }
+
   50% {
     box-shadow: 0 0 30px rgba(212, 175, 55, 0.45);
   }
@@ -954,6 +992,7 @@ select.form-control option:hover {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -977,7 +1016,7 @@ select.form-control option:hover {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(212,175,55,0.15) 50%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(212, 175, 55, 0.15) 50%, rgba(255, 255, 255, 0) 100%);
   background-size: 200% 100%;
   animation: shimmer 3s infinite;
 }
@@ -993,33 +1032,43 @@ select.form-control option:hover {
 }
 
 /* ==========================================================================
-   Comprehensive 6-Tier Responsive Media Query & Device Optimization System
+   Comprehensive 7-Tier Responsive Media Query & Device Optimization System
    ========================================================================== */
 
-/* Universal Scroll & Touch Fixes */
+/* Universal Anti-Overflow & Smooth Touch Scroll */
+html,
+body,
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* Fluid Table Container */
+/* Fluid Responsive Table Container */
 .responsive-table-wrapper {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-md);
+  position: relative;
 }
 
 .responsive-table-wrapper table {
   width: 100%;
-  min-width: 620px;
+  min-width: 680px;
   border-collapse: collapse;
 }
 
-/* Sticky Column Support */
+/* Sticky First Column for Wide Tables */
 .sticky-col-first {
   position: sticky;
   left: 0;
@@ -1061,15 +1110,10 @@ select.form-control option:hover {
    (iPhone SE, iPhone 12/13/14 Mini, Galaxy S21/S22/S23, Pixel 6/7/8)
    ========================================================================== */
 @media screen and (max-width: 480px) {
-  html, body {
-    font-size: 14px;
-  }
 
-  /* Header mobile padding */
-  .header {
-    padding: 0.5rem 0.65rem !important;
-    height: auto !important;
-    min-height: 56px;
+  html,
+  body {
+    font-size: 14px;
   }
 
   .page-title-group h1 {
@@ -1108,12 +1152,6 @@ select.form-control option:hover {
     width: 100% !important;
   }
 
-  /* Accessible Touch Targets */
-  button, input, select, textarea {
-    min-height: 44px !important;
-    font-size: 14px !important;
-  }
-
   /* Single-column Layouts */
   .dashboard-grid,
   .form-row,
@@ -1141,14 +1179,10 @@ select.form-control option:hover {
 }
 
 /* ==========================================================================
-   Tier 2: Large Mobile & Phablets (481px – 767px)
+   Tier 2: Large Mobile & Phablets (481px – 639px)
    (iPhone Pro Max, Galaxy Plus/Ultra, Pixel Pro)
    ========================================================================== */
-@media screen and (min-width: 481px) and (max-width: 767px) {
-  .header {
-    padding: 0.65rem 1rem !important;
-  }
-
+@media screen and (min-width: 481px) and (max-width: 639px) {
   .modal-card,
   .modal-container {
     width: 92vw !important;
@@ -1166,20 +1200,36 @@ select.form-control option:hover {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
   }
+}
 
-  button, input, select, textarea {
-    min-height: 44px !important;
+/* ==========================================================================
+   Tier 3: Tablet Portrait (640px – 767px)
+   ========================================================================== */
+@media screen and (min-width: 640px) and (max-width: 767px) {
+  .modal-card,
+  .modal-container {
+    max-width: 540px !important;
+    max-height: 90vh !important;
+  }
+
+  .dashboard-grid,
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+
+  .rooms-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
   }
 }
 
 /* ==========================================================================
-   Tier 3: Tablets & iPads (768px – 1023px)
+   Tier 4: Tablets Landscape & iPads (768px – 1023px)
    (iPad 10.2, iPad Air, iPad Pro 11, Galaxy Tab S8)
    ========================================================================== */
 @media screen and (min-width: 768px) and (max-width: 1023px) {
-  .header {
-    padding: 0.75rem 1.25rem !important;
-  }
+
 
   .modal-card,
   .modal-container {
@@ -1206,13 +1256,11 @@ select.form-control option:hover {
 }
 
 /* ==========================================================================
-   Tier 4: Small Laptops & Surface Devices (1024px – 1279px)
+   Tier 5: Small Laptops & Surface Devices (1024px – 1279px)
    (MacBook Air 13, iPad Pro 12.9, Surface Pro)
    ========================================================================== */
 @media screen and (min-width: 1024px) and (max-width: 1279px) {
-  .header {
-    padding: 0.65rem 1rem !important;
-  }
+
 
   .modal-card,
   .modal-container {
@@ -1236,13 +1284,11 @@ select.form-control option:hover {
 }
 
 /* ==========================================================================
-   Tier 5: Standard Desktop & Laptops (1280px – 1535px)
+   Tier 6: Standard Desktop & Laptops (1280px – 1535px)
    (MacBook Pro 16, 1080p Full HD Displays, 24" Monitors)
    ========================================================================== */
 @media screen and (min-width: 1280px) and (max-width: 1535px) {
-  .header {
-    padding: 0.75rem 1.25rem !important;
-  }
+
 
   .dashboard-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -1261,29 +1307,121 @@ select.form-control option:hover {
 }
 
 /* ==========================================================================
-   Tier 6: Large Desktop, 2K, 4K & Ultra-Wide (>= 1536px)
+   Tier 7: Large Desktop, 2K, 4K & Ultra-Wide (>= 1536px)
    (27" 4K Displays, 34" Ultrawide Monitors)
    ========================================================================== */
 @media screen and (min-width: 1536px) {
-  .header {
-    padding: 0.85rem 1.5rem !important;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 1.75rem !important;
-  }
-
-  .stats-grid {
+  .rooms-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 1.5rem !important;
   }
+}
 
-  .rooms-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 1.75rem !important;
+/* ==========================================================================
+   Customer Portal & Luxury Hotel Responsive Design System
+   ========================================================================== */
+
+/* Fluid Typography & Base Container Constraints */
+.customer-container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .customer-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 }
 
+@media (min-width: 1024px) {
+  .customer-container {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    max-width: 1280px;
+  }
+}
 
+@media (min-width: 1536px) {
+  .customer-container {
+    max-width: 1536px;
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
 
+/* Extra Small Phones (< 480px) */
+@media screen and (max-width: 479px) {
+  .hero-title {
+    font-size: 1.75rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .hero-search-widget {
+    padding: 1rem !important;
+    border-radius: 1.25rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .room-card-image {
+    height: 200px !important;
+  }
+
+  .customer-auth-modal {
+    padding: 1.25rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* Mobile Screens (480px - 639px) */
+@media screen and (min-width: 480px) and (max-width: 639px) {
+  .hero-title {
+    font-size: 2.25rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .room-card-image {
+    height: 220px !important;
+  }
+}
+
+/* Tablets (640px - 1023px) */
+@media screen and (min-width: 640px) and (max-width: 1023px) {
+  .hero-title {
+    font-size: 2.75rem !important;
+  }
+
+  .customer-rooms-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Laptops & Standard Desktops (1024px - 1535px) */
+@media screen and (min-width: 1024px) and (max-width: 1535px) {
+  .hero-title {
+    font-size: 3.5rem !important;
+  }
+
+  .customer-rooms-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Ultra-Wide (>= 1536px) */
+@media screen and (min-width: 1536px) {
+  .hero-title {
+    font-size: 4rem !important;
+  }
+
+  .customer-rooms-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}

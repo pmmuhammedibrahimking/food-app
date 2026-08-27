@@ -22,6 +22,7 @@ import { I18nProvider } from './i18n/I18nContext';
 import './index.css';
 import './App.css';
 
+import { CustomerAuthProvider } from './context/CustomerAuthContext';
 import { GmailConfirmationModal } from './components/GmailConfirmationModal';
 import { AuthModal } from './components/AuthModal';
 import { GoogleAuthModal } from './components/GoogleAuthModal';
@@ -115,7 +116,6 @@ function MainAppContent() {
       />
       <AuthModal />
       <GoogleAuthModal />
-      <Toast />
     </div>
   );
 }
@@ -123,9 +123,11 @@ function MainAppContent() {
 export default function App() {
   return (
     <HotelProvider>
-      <I18nProvider>
-        <MainAppContent />
-      </I18nProvider>
+      <CustomerAuthProvider>
+        <I18nProvider>
+          <MainAppContent />
+        </I18nProvider>
+      </CustomerAuthProvider>
     </HotelProvider>
   );
 }

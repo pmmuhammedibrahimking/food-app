@@ -28,7 +28,7 @@ export const NotificationCenter = () => {
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
+          <div className="absolute -right-12 sm:right-0 mt-3 w-[calc(100vw-32px)] max-w-[340px] sm:max-w-none sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl z-50 overflow-hidden backdrop-blur-xl animate-scale-up">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/60">
               <div className="flex items-center gap-2">
@@ -44,11 +44,10 @@ export const NotificationCenter = () => {
               <div className="flex items-center gap-1">
                 <button
                   onClick={toggleSound}
-                  className={`p-1.5 rounded-lg border text-xs transition-colors ${
-                    isSoundMuted
+                  className={`p-1.5 rounded-lg border text-xs transition-colors ${isSoundMuted
                       ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
                       : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  }`}
+                    }`}
                   title={isSoundMuted ? 'Unmute alert audio chime' : 'Mute alert audio chime'}
                 >
                   {isSoundMuted ? <IconVolumeX size={14} /> : <IconVolume2 size={14} />}
@@ -74,9 +73,8 @@ export const NotificationCenter = () => {
                 notifications.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-3 transition-colors ${
-                      !item.read ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-slate-800/50'
-                    }`}
+                    className={`p-3 transition-colors ${!item.read ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-slate-800/50'
+                      }`}
                   >
                     <div className="flex items-start gap-2.5">
                       <div className="mt-0.5 p-1.5 rounded-lg bg-slate-800 text-amber-400 shrink-0 border border-slate-700">

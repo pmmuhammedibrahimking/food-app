@@ -105,15 +105,25 @@ const inMemoryUsers = [
   }
 ];
 
-export const findUserByEmail = async (email) => {
+export const findUserByEmail = async (identifier) => {
+  if (!identifier) return null;
+  const clean = identifier.trim().toLowerCase();
   try {
     if (mongoose.connection.readyState === 1) {
-      return await User.findOne({ email: email.toLowerCase() }).select('+password');
+      return await User.findOne({
+        $or: [{ email: clean }, { username: clean }]
+      }).select('+password');
     }
   } catch (err) {
     console.warn('MongoDB query warning, using fallback store:', err.message);
   }
-  const found = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  const found = inMemoryUsers.find(
+    (u) =>
+      (u.email && u.email.toLowerCase() === clean) ||
+      (u.username && u.username.toLowerCase() === clean) ||
+      (u.role && u.role.toLowerCase() === clean) ||
+      (u.name && u.name.toLowerCase().replace(/\s+/g, '') === clean)
+  );
   return found || null;
 };
 

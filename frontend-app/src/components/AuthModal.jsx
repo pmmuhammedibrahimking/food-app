@@ -291,17 +291,17 @@ export const AuthModal = () => {
                   onClick={() => {
                     setEmail('pmmuhammedibrahim786@gmail.com');
                     setBookingId('BK-7860');
-                    if (addToast) addToast('Loaded VIP Profile: pmmuhammedibrahim786@gmail.com', 'info');
+                    setError('Auto-filled: pmmuhammedibrahim786@gmail.com');
                   }}
                   className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline"
                 >
-                  Muhammed Ibrahim VIP
+                  Auto-Fill
                 </button>
               </div>
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="pmmuhammedibrahim786@gmail.com"
+                placeholder="e.g. ibrahim or guest@resort.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
@@ -364,11 +364,11 @@ export const AuthModal = () => {
             )}
 
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Staff Email / Gmail</label>
+              <label className="block font-semibold text-slate-300 mb-1">Staff Username or Email / Gmail *</label>
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="pmmuhammedibrahim786@gmail.com"
+                placeholder="e.g. manager or pmmuhammedibrahim786@gmail.com"
                 value={staffEmail}
                 onChange={(e) => setStaffEmail(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"

@@ -580,7 +580,15 @@ export const HotelProvider = ({ children }) => {
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [portalMode, setPortalMode] = useState('admin'); // 'admin' | 'guest'
+  const [portalMode, setPortalModeState] = useState(() => {
+    const saved = localStorage.getItem('hotel_portal_mode');
+    return saved ? saved : 'guest'; // Defaults directly to User / Guest Portal
+  });
+
+  const setPortalMode = (mode) => {
+    setPortalModeState(mode);
+    localStorage.setItem('hotel_portal_mode', mode);
+  };
   const [toasts, setToasts] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [gmailConfirmationBooking, setGmailConfirmationBooking] = useState(null);
@@ -588,7 +596,7 @@ export const HotelProvider = ({ children }) => {
   const sendGmailConfirmation = async (booking) => {
     setGmailConfirmationBooking(booking);
     const recipient = booking.guestEmail || 'pmmuhammedibrahim786@gmail.com';
-    
+
     try {
       await fetch('http://localhost:5000/api/send-email', {
         method: 'POST',
@@ -677,7 +685,7 @@ export const HotelProvider = ({ children }) => {
   const addAuditLog = async (action, details, user = 'Current Staff', role = 'Admin', module = 'System', relevantRecordId = 'N/A') => {
     const activeUser = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : user;
     const activeRole = (typeof currentUser !== 'undefined' && currentUser && currentUser.role) ? currentUser.role : role;
-    
+
     const newLog = {
       id: `LOG-${Math.floor(100 + Math.random() * 900)}`,
       action,
@@ -688,7 +696,7 @@ export const HotelProvider = ({ children }) => {
       relevantRecordId,
       timestamp: new Date().toISOString()
     };
-    
+
     setAuditLogs((prev) => [newLog, ...prev]);
 
     try {
@@ -1009,17 +1017,24 @@ export const HotelProvider = ({ children }) => {
 
   const [jwtToken, setJwtToken] = useState(() => localStorage.getItem('hotel_jwt_token') || '');
 
-  const loginAdmin = async (email, password) => {
-    if (!email || !password) {
-      addToast('Please enter both email and password.', 'error');
+  const loginAdmin = async (loginIdentifier, password) => {
+    if (!loginIdentifier || !password) {
+      addToast('Please enter both username/email and password.', 'error');
       return false;
     }
+
+    const cleanIdentifier = loginIdentifier.trim().toLowerCase();
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ 
+          email: cleanIdentifier.includes('@') ? cleanIdentifier : undefined,
+          username: !cleanIdentifier.includes('@') ? cleanIdentifier : undefined,
+          identifier: cleanIdentifier,
+          password 
+        })
       });
 
       const data = await res.json();
@@ -1033,14 +1048,15 @@ export const HotelProvider = ({ children }) => {
         addToast(data.message || `Welcome back, ${data.user.name}! Authenticated as ${data.user.role}.`, 'success');
         return true;
       } else {
-        addToast(data.message || 'Invalid login credentials.', 'error');
+        addToast(data.message || 'Invalid username, email, or password.', 'error');
         return false;
       }
     } catch (err) {
       // Fallback local auth for demo
-      const role = email.includes('reception') ? 'Receptionist' : email.includes('housekeeping') ? 'Housekeeping' : 'Manager';
-      const name = role === 'Manager' ? 'General Manager' : role === 'Receptionist' ? 'Sarah Jenkins' : 'Maria Garcia';
-      const user = { name, email, role };
+      const role = cleanIdentifier.includes('reception') ? 'Receptionist' : cleanIdentifier.includes('housekeeping') ? 'Housekeeping' : 'Manager';
+      const name = role === 'Manager' ? 'Muhammed Ibrahim (GM)' : role === 'Receptionist' ? 'Sarah Jenkins' : 'Maria Garcia';
+      const email = cleanIdentifier.includes('@') ? cleanIdentifier : `${cleanIdentifier}@aureliahotel.com`;
+      const user = { name, username: cleanIdentifier.replace('@aureliahotel.com', ''), email, role };
       setIsAuthenticated(true);
       setCurrentUser(user);
       localStorage.setItem('hotel_auth', 'true');
@@ -1162,7 +1178,7 @@ export const HotelProvider = ({ children }) => {
       prev.map((b) => (b.id === bookingId ? { ...b, status: 'Checked-Out' } : b))
     );
     updateRoomStatus(booking.roomNumber, 'Cleaning');
-    
+
     // Add HK task
     const newTask = {
       id: `HK-${Date.now()}`,
