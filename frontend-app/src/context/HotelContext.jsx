@@ -581,14 +581,39 @@ export const HotelProvider = ({ children }) => {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [portalMode, setPortalModeState] = useState(() => {
+    // Check URL parameters first (e.g. ?admin, ?portal=admin, #admin)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('portal') === 'admin' || params.has('admin') || window.location.hash === '#admin') {
+        return 'admin';
+      }
+    }
     const saved = localStorage.getItem('hotel_portal_mode');
-    return saved ? saved : 'guest'; // Defaults directly to User / Guest Portal
+    return saved ? saved : 'guest'; // Defaults to Guest / Customer Storefront
   });
 
   const setPortalMode = (mode) => {
     setPortalModeState(mode);
     localStorage.setItem('hotel_portal_mode', mode);
   };
+
+  useEffect(() => {
+    // Listen to hash / URL changes
+    const checkUrlPortal = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('portal') === 'admin' || params.has('admin') || window.location.hash === '#admin') {
+        setPortalModeState('admin');
+      } else if (params.get('portal') === 'guest' || window.location.hash === '#guest') {
+        setPortalModeState('guest');
+      }
+    };
+    window.addEventListener('popstate', checkUrlPortal);
+    window.addEventListener('hashchange', checkUrlPortal);
+    return () => {
+      window.removeEventListener('popstate', checkUrlPortal);
+      window.removeEventListener('hashchange', checkUrlPortal);
+    };
+  }, []);
   const [toasts, setToasts] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [gmailConfirmationBooking, setGmailConfirmationBooking] = useState(null);
