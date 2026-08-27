@@ -115,15 +115,6 @@ export const CustomerNavbar = () => {
             </select>
           </div>
 
-          {/* Switch to Staff Portal */}
-          <button
-            onClick={() => setPortalMode('admin')}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
-            title="Switch to Staff Operations Portal"
-          >
-            <span>Staff Portal</span>
-          </button>
-
           {/* Customer Auth Button or User Menu */}
           {isCustomerAuthenticated && currentCustomer ? (
             <div className="relative">
@@ -286,18 +277,6 @@ export const CustomerNavbar = () => {
               </button>
             </div>
           )}
-
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                setPortalMode('admin');
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold rounded-xl text-center"
-            >
-              Switch to Staff Operations Portal
-            </button>
-          </div>
         </div>
       )}
     </nav>

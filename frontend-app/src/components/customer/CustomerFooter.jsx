@@ -5,7 +5,7 @@ import { IconCrown, IconPhone, IconMail, IconMapPin, IconSend, IconShield, IconS
 
 export const CustomerFooter = () => {
   const { setActiveCustomerPage } = useCustomerAuth();
-  const { addToast } = useHotel();
+  const { addToast, setPortalMode } = useHotel();
   const [newsletterEmail, setNewsletterEmail] = useState('');
 
   const handleSubscribe = (e) => {
@@ -167,6 +167,13 @@ export const CustomerFooter = () => {
           <span className="hover:text-slate-400 cursor-pointer">Privacy Charter</span>
           <span className="hover:text-slate-400 cursor-pointer">Terms of Luxury Stay</span>
           <span className="hover:text-slate-400 cursor-pointer">Security Protocol</span>
+          <button
+            onClick={() => setPortalMode('admin')}
+            className="hover:text-slate-400 cursor-pointer text-slate-600 transition-colors"
+            title="Authorized Staff Portal"
+          >
+            Staff Portal
+          </button>
         </div>
       </div>
     </footer>
