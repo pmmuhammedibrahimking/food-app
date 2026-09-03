@@ -23,12 +23,36 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['Admin', 'Manager', 'Receptionist', 'Housekeeping', 'Guest'],
+      enum: ['Admin', 'Staff', 'Manager', 'Receptionist', 'Housekeeping', 'Guest', 'Customer'],
       default: 'Guest'
     },
     department: {
       type: String,
       default: 'General'
+    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+    failedLoginAttempts: {
+      type: Number,
+      default: 0
+    },
+    isLocked: {
+      type: Boolean,
+      default: false
+    },
+    lockUntil: {
+      type: Date
+    },
+    twoFactorSecret: {
+      type: String
+    },
+    isTwoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    avatar: {
+      type: String,
+      default: 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'
     }
   },
   {
@@ -51,57 +75,40 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 export const User = mongoose.model('User', userSchema);
 
-// In-Memory Fallback Store & Seed Helpers
+// In-Memory Fallback Store
 const inMemoryUsers = [
   {
     _id: 'USR-ADMIN-01',
     id: 'USR-ADMIN-01',
-    name: 'Muhammed Ibrahim (GM)',
-    email: 'pmmuhammedibrahim786@gmail.com',
-    password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e', // bcrypt hash placeholder
+    name: 'Executive Admin',
+    email: 'admin@aureliagrand.com',
+    password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
     rawPassword: 'adminpassword123',
     role: 'Admin',
-    department: 'Executive Operations'
+    department: 'Executive Operations',
+    avatar: 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'
   },
   {
     _id: 'USR-MGR-01',
     id: 'USR-MGR-01',
-    name: 'General Manager',
-    email: 'admin@aurelia.com',
+    name: 'Operations Manager',
+    email: 'manager@aureliagrand.com',
     password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
-    rawPassword: 'adminpassword123',
+    rawPassword: 'managerpassword123',
     role: 'Manager',
-    department: 'Executive Operations'
+    department: 'Executive Operations',
+    avatar: 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'
   },
   {
-    _id: 'USR-REC-01',
-    id: 'USR-REC-01',
-    name: 'Sarah Jenkins',
-    email: 'reception@aurelia.com',
+    _id: 'USR-STAFF-01',
+    id: 'USR-STAFF-01',
+    name: 'Front Desk Lead',
+    email: 'staff@aureliagrand.com',
     password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
-    rawPassword: 'receptionpassword123',
-    role: 'Receptionist',
-    department: 'Front Desk'
-  },
-  {
-    _id: 'USR-HK-01',
-    id: 'USR-HK-01',
-    name: 'Maria Garcia',
-    email: 'housekeeping@aurelia.com',
-    password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
-    rawPassword: 'housekeepingpassword123',
-    role: 'Housekeeping',
-    department: 'Sanitation'
-  },
-  {
-    _id: 'USR-GUEST-01',
-    id: 'USR-GUEST-01',
-    name: 'Lord Alexander Wright',
-    email: 'alexander.wright@royals.co.uk',
-    password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
-    rawPassword: 'guestpassword123',
-    role: 'Guest',
-    department: 'Guest Concierge'
+    rawPassword: 'staffpassword123',
+    role: 'Staff',
+    department: 'Front Desk',
+    avatar: 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'
   }
 ];
 
@@ -138,10 +145,10 @@ export const findUserById = async (id) => {
   return inMemoryUsers.find((u) => u._id === id || u.id === id) || null;
 };
 
-export const createUser = async ({ name, email, password, role = 'Guest', department = 'General' }) => {
+export const createUser = async ({ name, email, password, role = 'Guest', department = 'General', avatar }) => {
   try {
     if (mongoose.connection.readyState === 1) {
-      const user = await User.create({ name, email, password, role, department });
+      const user = await User.create({ name, email, password, role, department, avatar });
       return user;
     }
   } catch (err) {
@@ -154,7 +161,8 @@ export const createUser = async ({ name, email, password, role = 'Guest', depart
     email: email.toLowerCase(),
     password,
     role,
-    department
+    department,
+    avatar: avatar || 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'
   };
   inMemoryUsers.push(newUser);
   return newUser;

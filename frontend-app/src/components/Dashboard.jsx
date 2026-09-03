@@ -12,7 +12,8 @@ import {
   IconPlus,
   IconPrinter,
   IconX,
-  IconCalendar
+  IconCalendar,
+  IconCrown
 } from './Icons';
 
 // Custom Responsive Real-Time SVG Area Chart
@@ -224,6 +225,8 @@ export const Dashboard = ({ onOpenNewBookingModal }) => {
     metrics,
     rooms = [],
     bookings = [],
+    currentUser,
+    userRole,
     checkInGuest,
     checkOutGuest,
     cancelBooking,
@@ -339,6 +342,42 @@ export const Dashboard = ({ onOpenNewBookingModal }) => {
 
   return (
     <div className="space-y-6 text-slate-100">
+      {/* Welcome Banner with Logged-in Admin / Staff Profile Info */}
+      <div className="bg-gradient-to-r from-amber-500/15 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="relative flex-shrink-0">
+            <img
+              src={currentUser?.avatar || 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'}
+              alt={currentUser?.name || 'Administrator'}
+              className="w-12 h-12 rounded-full object-cover border-2 border-amber-400 shadow-md shadow-amber-500/20"
+            />
+            <span className="absolute -bottom-1 -right-1 p-0.5 bg-slate-950 border border-amber-400 rounded-full text-amber-400">
+              <IconCrown size={10} />
+            </span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-serif text-base sm:text-lg font-bold text-slate-100">
+                Welcome back, {currentUser?.name || 'Administrator'}
+              </h2>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">
+                {currentUser?.role || (userRole || 'Admin')}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              {currentUser?.email || 'Operations Console'} • Live Resort Management Dashboard
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950 border border-slate-800 text-[11px] text-emerald-400 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            System Live & Ready
+          </span>
+        </div>
+      </div>
+
       {/* Executive Report Export Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-900/80 border border-slate-800 p-3 sm:p-4 rounded-xl gap-2.5">
         <div className="flex items-center gap-2">

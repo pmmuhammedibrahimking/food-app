@@ -89,14 +89,16 @@ export const Header = ({ onOpenNewBookingModal, onToggleMobileSidebar, onOpenAud
 
           {/* Desktop Action Buttons (Inline >= 1024px) */}
           <div className="hidden lg:flex items-center gap-1.5">
-            <button
-              onClick={onOpenAuditLogsModal}
-              className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-amber-400 hover:text-amber-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all whitespace-nowrap h-9"
-              title="View System Audit Logs"
-            >
-              <span className="hidden xl:inline">Audit Logs</span>
-              <span className="xl:hidden">Audit</span>
-            </button>
+            {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'general manager') && (
+              <button
+                onClick={onOpenAuditLogsModal}
+                className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-amber-400 hover:text-amber-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all whitespace-nowrap h-9"
+                title="View System Audit Logs"
+              >
+                <span className="hidden xl:inline">Audit Logs</span>
+                <span className="xl:hidden">Audit</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenNewBookingModal}
@@ -121,19 +123,26 @@ export const Header = ({ onOpenNewBookingModal, onToggleMobileSidebar, onOpenAud
           {/* User Profile Avatar Section */}
           <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-slate-800 flex-shrink-0">
             <div
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold text-xs shadow-sm flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-amber-400/40 transition-all"
-              title={currentUser?.name || 'General Manager'}
+              className="relative cursor-pointer hover:ring-2 hover:ring-amber-400/40 rounded-full transition-all"
+              title={currentUser?.name || 'Administrator'}
               onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
             >
-              {currentUser?.name ? currentUser.name.charAt(0) : 'G'}
+              <img
+                src={currentUser?.avatar || 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'}
+                alt={currentUser?.name || 'Admin'}
+                className="w-8 h-8 rounded-full object-cover border border-amber-400 shadow-sm"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 p-0.5 bg-slate-950 border border-amber-400 rounded-full text-amber-400">
+                <IconCrown size={8} />
+              </span>
             </div>
 
             <div className="hidden xl:block min-w-0">
               <div className="text-xs font-bold text-slate-100 leading-tight truncate max-w-[110px]">
-                {currentUser?.name || 'General Manager'}
+                {currentUser?.name || 'Administrator'}
               </div>
               <div className="text-[10px] text-amber-400 font-medium truncate">
-                {currentUser?.role || 'Manager'}
+                {currentUser?.role || 'Admin'}
               </div>
             </div>
 

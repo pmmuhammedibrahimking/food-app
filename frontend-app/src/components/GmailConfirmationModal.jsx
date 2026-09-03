@@ -86,7 +86,7 @@ export const GmailConfirmationModal = ({ isOpen, onClose, booking }) => {
               <strong className="text-slate-200">From (Hotel):</strong> Aurelia Grand Resort & Spa &lt;pmmuhammedibrahim786@gmail.com&gt;
             </div>
             <div>
-              <strong className="text-slate-200">To (Customer):</strong> {booking.guestEmail || 'pmmhammedibrahim@gmail.com'}
+              <strong className="text-slate-200">To (Customer):</strong> {booking.guestEmail || 'pmmuhammedibrahim786@gmail.com'}
             </div>
           </div>
         </div>
@@ -175,12 +175,12 @@ export const GmailConfirmationModal = ({ isOpen, onClose, booking }) => {
         {/* Modal Footer Controls */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <span className="text-slate-400 text-[11px]">
-            Delivered to Customer: <strong className="text-amber-400">{booking.guestEmail || 'pmmhammedibrahim@gmail.com'}</strong>
+            Delivered to Customer: <strong className="text-amber-400">{booking.guestEmail || 'pmmuhammedibrahim786@gmail.com'}</strong>
           </span>
 
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(booking.guestEmail || 'pmmhammedibrahim@gmail.com')}&su=${encodeURIComponent(`Booking Confirmed! Reservation #${booking.id} - Aurelia Resort`)}&body=${encodeURIComponent(`Dear ${booking.guestName},\n\nYour reservation at Aurelia Grand Resort & Spa is CONFIRMED!\n\n• Booking ID: ${booking.id}\n• Room: Room ${booking.roomNumber} (${booking.roomCategory || 'Suite'})\n• Check-In: ${booking.checkIn}\n• Check-Out: ${booking.checkOut}\n• Total Bill: $${booking.totalAmount}\n• Payment Status: ${booking.paymentStatus || 'Paid'}\n\nLuxury Inclusions:\n• Complimentary Moët & Chandon Welcome Champagne\n• 24/7 Personal Butler Concierge Service\n• Access to Michelin Spa\n\nWarm regards,\nAurelia Grand Resort & Spa Team`)}`}
+              href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(booking.guestEmail || 'pmmuhammedibrahim786@gmail.com')}&su=${encodeURIComponent(`Booking Confirmed! Reservation #${booking.id} - Aurelia Resort`)}&body=${encodeURIComponent(`Dear ${booking.guestName},\n\nYour reservation at Aurelia Grand Resort & Spa is CONFIRMED!\n\n• Booking ID: ${booking.id}\n• Room: Room ${booking.roomNumber} (${booking.roomCategory || 'Suite'})\n• Check-In: ${booking.checkIn}\n• Check-Out: ${booking.checkOut}\n• Total Bill: $${booking.totalAmount}\n• Payment Status: ${booking.paymentStatus || 'Paid'}\n\nLuxury Inclusions:\n• Complimentary Moët & Chandon Welcome Champagne\n• 24/7 Personal Butler Concierge Service\n• Access to Michelin Spa\n\nWarm regards,\nAurelia Grand Resort & Spa Team`)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-md text-xs text-decoration-none"

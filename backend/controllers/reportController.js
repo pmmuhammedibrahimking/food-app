@@ -295,3 +295,50 @@ export const getReportData = async (req, res) => {
     return errorResponse(res, 500, 'Failed to generate report data.');
   }
 };
+
+import ExcelJS from 'exceljs';
+
+/**
+ * @desc    Generate and Download Excel Report
+ * @route   POST /api/reports/export
+ * @access  Private / Staff
+ */
+export const exportExcelReport = async (req, res) => {
+  try {
+    const { rows = [], reportTitle = 'Hotel_Report' } = req.body;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Data');
+
+    if (rows.length > 0) {
+      // Create headers dynamically
+      const columns = Object.keys(rows[0]).map(key => ({
+        header: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
+        key: key,
+        width: 20
+      }));
+      
+      // Make header row bold
+      worksheet.columns = columns;
+      worksheet.getRow(1).font = { bold: true };
+
+      // Add all rows
+      rows.forEach(row => {
+        worksheet.addRow(row);
+      });
+    } else {
+      worksheet.addRow(['No data available for export']);
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Excel Export Error:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: 'Failed to generate Excel report.' });
+    }
+  }
+};

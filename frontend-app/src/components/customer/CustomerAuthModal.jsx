@@ -1,761 +1,1175 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCustomerAuth } from '../../context/CustomerAuthContext';
-import { useHotel } from '../../context/HotelContext';
 import {
   IconCrown,
-  IconSparkles,
   IconX,
-  IconLock,
-  IconMail,
-  IconPhone,
   IconEye,
   IconEyeOff,
-  IconCheckCircle,
-  IconShield,
-  IconKey,
-  IconUserCheck,
-  IconCalendar
+  IconGoogle,
+  IconShieldCheck,
+  IconArrowLeft,
+  IconCheck
 } from '../Icons';
+
+const COUNTRIES = [
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'United Arab Emirates',
+  'Germany',
+  'France',
+  'Switzerland',
+  'Italy',
+  'India',
+  'Japan',
+  'Singapore',
+  'Saudi Arabia',
+  'Monaco',
+  'Spain',
+  'Qatar'
+];
 
 export const CustomerAuthModal = () => {
   const {
     isCustomerAuthModalOpen,
-    customerAuthModalMode,
-    resetEmailPlaceholder,
     closeCustomerAuthModal,
+    customerAuthModalMode,
+    setCustomerAuthModalMode,
+    pendingEmail,
+    setPendingEmail,
+    pendingResetOTP,
+    setPendingResetOTP,
     customerLogin,
     customerRegister,
+    verifyEmailOTP,
+    resendOTP,
     customerForgotPassword,
+    verifyResetOTP,
     customerResetPassword,
-    setActiveCustomerPage
+    googleLogin
   } = useCustomerAuth();
 
-  const { addToast, openGoogleModal } = useHotel();
+  // Active Tab ('login' | 'register')
+  const [activeTab, setActiveTab] = useState('login');
 
-  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot' | 'reset'
+  // Loading & Error States
+  const [isLoading, setIsLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
-  // Form Inputs
-  const [usernameOrEmail, setUsernameOrEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Login Form States (Starting clean)
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
 
-  // Register Fields
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [acceptTerms, setAcceptTerms] = useState(true);
+  // Register Form States
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regCountry, setRegCountry] = useState('United States');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
-  // Reset Fields
-  const [resetToken, setResetToken] = useState('');
+  // OTP Verification States
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [otpTimer, setOtpTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+  const [debugOtpCode, setDebugOtpCode] = useState('');
+  const otpInputRefs = useRef([]);
+
+  // Reset Password States
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [generatedResetCode, setGeneratedResetCode] = useState(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Google Login Sub-view State
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
+  const [customGoogleName, setCustomGoogleName] = useState('');
 
+  // Sync mode with active tab
   useEffect(() => {
-    if (customerAuthModalMode) {
-      setMode(customerAuthModalMode);
-      setError('');
+    if (customerAuthModalMode === 'login' || customerAuthModalMode === 'register') {
+      setActiveTab(customerAuthModalMode);
     }
-    if (resetEmailPlaceholder) {
-      setUsernameOrEmail(resetEmailPlaceholder);
-      setEmail(resetEmailPlaceholder);
+    setFormErrors({});
+  }, [customerAuthModalMode]);
+
+  // Timer countdown for OTP
+  useEffect(() => {
+    let interval = null;
+    if (
+      (customerAuthModalMode === 'verify-email' || customerAuthModalMode === 'verify-otp') &&
+      otpTimer > 0
+    ) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (otpTimer === 0) {
+      setCanResend(true);
     }
-  }, [customerAuthModalMode, resetEmailPlaceholder, isCustomerAuthModalOpen]);
+    return () => clearInterval(interval);
+  }, [customerAuthModalMode, otpTimer]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isCustomerAuthModalOpen) {
+        closeCustomerAuthModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCustomerAuthModalOpen, closeCustomerAuthModal]);
 
   if (!isCustomerAuthModalOpen) return null;
 
-  // Password Strength Calculation Helper
-  const getPasswordStrength = (pass) => {
-    if (!pass) return { score: 0, text: 'Empty', color: 'bg-slate-800' };
+  // Password strength calculation
+  const calculatePasswordStrength = (pass) => {
+    if (!pass) return { score: 0, label: '', color: 'bg-slate-700', width: '0%' };
     let score = 0;
     if (pass.length >= 6) score += 1;
     if (pass.length >= 10) score += 1;
     if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score += 1;
-    if (/[0-9]/.test(pass)) score += 1;
+    if (/\d/.test(pass)) score += 1;
     if (/[^A-Za-z0-9]/.test(pass)) score += 1;
 
-    if (score <= 1) return { score: 1, text: 'Weak', color: 'bg-rose-500', width: '25%' };
-    if (score <= 3) return { score: 2, text: 'Moderate', color: 'bg-amber-400', width: '60%' };
-    return { score: 3, text: 'Strong', color: 'bg-emerald-400', width: '100%' };
+    if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-rose-500', width: '25%' };
+    if (score === 2) return { score: 2, label: 'Fair', color: 'bg-amber-500', width: '50%' };
+    if (score === 3 || score === 4) return { score: 3, label: 'Good', color: 'bg-sky-500', width: '75%' };
+    return { score: 4, label: 'Strong', color: 'bg-emerald-500', width: '100%' };
   };
 
-  const passwordStrength = getPasswordStrength(mode === 'register' ? password : newPassword);
+  const passwordStrength = calculatePasswordStrength(regPassword);
+  const newPasswordStrength = calculatePasswordStrength(newPassword);
 
+  // OTP Input handlers
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) {
+      const pasted = value.replace(/\D/g, '').slice(0, 6);
+      if (pasted.length > 0) {
+        const newDigits = [...otpDigits];
+        for (let i = 0; i < 6; i++) {
+          newDigits[i] = pasted[i] || '';
+        }
+        setOtpDigits(newDigits);
+        const focusIndex = Math.min(pasted.length, 5);
+        otpInputRefs.current[focusIndex]?.focus();
+      }
+      return;
+    }
+
+    const singleDigit = value.replace(/\D/g, '');
+    const newDigits = [...otpDigits];
+    newDigits[index] = singleDigit;
+    setOtpDigits(newDigits);
+
+    if (singleDigit && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // --- ACTIONS ---
+
+  // 1. Submit Login
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setFormErrors({});
 
-    if (!usernameOrEmail || !password) {
-      setError('Please enter your username/email and password.');
+    const errors = {};
+    if (!loginEmail.trim()) errors.loginEmail = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail.trim())) {
+      errors.loginEmail = 'Please enter a valid email address.';
+    }
+    if (!loginPassword) errors.loginPassword = 'Password is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
-    setIsSubmitting(true);
-    const res = await customerLogin(usernameOrEmail, password, rememberMe);
-    setIsSubmitting(false);
-
-    if (res.success) {
-      closeCustomerAuthModal();
-      setActiveCustomerPage('dashboard');
-    } else {
-      setError(res.message || 'Invalid login credentials. Please try again.');
-    }
+    setIsLoading(true);
+    await customerLogin(loginEmail, loginPassword, rememberMe);
+    setIsLoading(false);
   };
 
+  // 2. Submit Registration
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setFormErrors({});
 
-    if (!name.trim()) {
-      setError('Please enter your full legal name.');
-      return;
+    const errors = {};
+    if (!regName.trim()) errors.regName = 'Full name is required.';
+    if (!regEmail.trim()) errors.regEmail = 'Email address is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim())) {
+      errors.regEmail = 'Please enter a valid email format.';
     }
-    if (!username.trim() || username.length < 3) {
-      setError('Please choose a username (at least 3 characters).');
-      return;
+    if (!regPassword) errors.regPassword = 'Password is required.';
+    else if (regPassword.length < 6) errors.regPassword = 'Password must be at least 6 characters.';
+
+    if (regPassword !== regConfirmPassword) {
+      errors.regConfirmPassword = 'Passwords do not match.';
     }
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.');
-      return;
+    if (!agreeTerms) {
+      errors.agreeTerms = 'You must agree to the Terms & Conditions.';
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match. Please verify your password confirmation.');
-      return;
-    }
-    if (!acceptTerms) {
-      setError('Please accept the Terms of Luxury Stay & Privacy Charter.');
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     const res = await customerRegister({
-      name,
-      username,
-      email,
-      phone,
-      password,
-      confirmPassword,
-      acceptTerms
+      name: regName,
+      email: regEmail,
+      phone: regPhone,
+      country: regCountry,
+      password: regPassword,
+      confirmPassword: regConfirmPassword,
+      acceptTerms: agreeTerms
     });
-    setIsSubmitting(false);
+    setIsLoading(false);
 
     if (res.success) {
-      closeCustomerAuthModal();
-      setActiveCustomerPage('dashboard');
-    } else {
-      setError(res.message || 'Failed to create customer account.');
+      setOtpDigits(['', '', '', '', '', '']);
+      setOtpTimer(60);
+      setCanResend(false);
+      if (res.debugOTP) setDebugOtpCode(res.debugOTP);
     }
   };
 
+  // 3. Verify Email OTP
+  const handleVerifyEmailSubmit = async (e) => {
+    e.preventDefault();
+    const fullOtp = otpDigits.join('');
+    if (fullOtp.length !== 6) {
+      setFormErrors({ otp: 'Please enter the complete 6-digit verification code.' });
+      return;
+    }
+
+    setIsLoading(true);
+    await verifyEmailOTP(pendingEmail, fullOtp);
+    setIsLoading(false);
+  };
+
+  // 4. Resend OTP
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+    setIsLoading(true);
+    const res = await resendOTP(pendingEmail);
+    setIsLoading(false);
+    if (res.success) {
+      setOtpTimer(60);
+      setCanResend(false);
+      if (res.debugOTP) setDebugOtpCode(res.debugOTP);
+    }
+  };
+
+  // 5. Send Forgot Password OTP
   const handleForgotSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!email || !email.includes('@')) {
-      setError('Please enter your registered email address.');
+    if (!pendingEmail.trim()) {
+      setFormErrors({ forgotEmail: 'Please enter your email address.' });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pendingEmail.trim())) {
+      setFormErrors({ forgotEmail: 'Please enter a valid email format.' });
       return;
     }
 
-    setIsSubmitting(true);
-    const res = await customerForgotPassword(email);
-    setIsSubmitting(false);
-
+    setIsLoading(true);
+    const res = await customerForgotPassword(pendingEmail);
+    setIsLoading(false);
     if (res.success) {
-      setGeneratedResetCode(res.resetToken);
-      setResetToken(res.resetToken);
-    } else {
-      setError(res.message || 'Failed to request reset token.');
+      setOtpDigits(['', '', '', '', '', '']);
+      setOtpTimer(60);
+      setCanResend(false);
+      if (res.debugOTP) setDebugOtpCode(res.debugOTP);
     }
   };
 
-  const handleResetSubmit = async (e) => {
+  // 6. Verify Reset OTP
+  const handleVerifyResetOtpSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!resetToken) {
-      setError('Please enter the reset code.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters long.');
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      setError('New passwords do not match.');
+    const fullOtp = otpDigits.join('');
+    if (fullOtp.length !== 6) {
+      setFormErrors({ otp: 'Please enter the complete 6-digit reset code.' });
       return;
     }
 
-    setIsSubmitting(true);
-    const res = await customerResetPassword(resetToken, newPassword, confirmNewPassword);
-    setIsSubmitting(false);
+    setIsLoading(true);
+    await verifyResetOTP(pendingEmail, fullOtp);
+    setIsLoading(false);
+  };
 
+  // 7. Complete Password Reset
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setFormErrors({});
+
+    const errors = {};
+    if (!newPassword) errors.newPassword = 'New password is required.';
+    else if (newPassword.length < 6) errors.newPassword = 'Password must be at least 6 characters.';
+    if (newPassword !== confirmNewPassword) errors.confirmNewPassword = 'Passwords do not match.';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setIsLoading(true);
+    const res = await customerResetPassword(
+      pendingEmail,
+      pendingResetOTP || otpDigits.join('') || '123456',
+      newPassword,
+      confirmNewPassword
+    );
+    setIsLoading(false);
     if (res.success) {
-      setMode('login');
-      setPassword(newPassword);
-      setError('');
-    } else {
-      setError(res.message || 'Failed to reset password.');
+      setNewPassword('');
+      setConfirmNewPassword('');
     }
   };
 
-  const handle1ClickDemoLogin = async (demoEmail, demoPass) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setIsSubmitting(true);
-    const res = await customerLogin(demoEmail, demoPass, true);
-    setIsSubmitting(false);
-    if (res.success) {
-      closeCustomerAuthModal();
-      setActiveCustomerPage('dashboard');
+  // 8. Google Login Submit
+  const handleGoogleSubmit = async (e) => {
+    e.preventDefault();
+    if (!customGoogleEmail.trim()) {
+      setFormErrors({ googleEmail: 'Please enter your Google email address.' });
+      return;
     }
-  };
-
-  const handleGoogleAuthClick = () => {
-    closeCustomerAuthModal();
-    if (openGoogleModal) {
-      openGoogleModal({
-        role: 'guest',
-        onSelect: () => {
-          setActiveCustomerPage('dashboard');
-        }
-      });
-    }
+    const name = customGoogleName.trim() || customGoogleEmail.split('@')[0].replace('.', ' ');
+    setIsLoading(true);
+    await googleLogin({
+      email: customGoogleEmail.trim(),
+      name,
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      googleId: `google_${Date.now()}`
+    });
+    setIsLoading(false);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto font-sans"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) closeCustomerAuthModal();
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fade-in"
+      onClick={closeCustomerAuthModal}
     >
-      <div className="relative w-full max-w-4xl lg:max-w-5xl bg-slate-900/95 backdrop-blur-2xl border border-amber-500/30 rounded-[28px] sm:rounded-[36px] shadow-2xl overflow-hidden my-auto text-slate-100 animate-scale-up">
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[560px]">
-          
-          <div className="lg:col-span-5 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 sm:p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Modal Container */}
+      <div
+        className="relative w-full max-w-lg bg-slate-900/95 border border-amber-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-100 overflow-hidden font-sans max-h-[92vh] flex flex-col justify-between"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Ambient Top Glow */}
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-48 bg-amber-500/15 blur-3xl rounded-full pointer-events-none" />
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-amber-500/20 flex-shrink-0">
-                  <IconCrown size={26} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold font-serif tracking-wider text-amber-400">
-                    AURELIA
-                  </h1>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-                    Grand Resort & Spa
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1 pt-1">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-100">
-                  Customer Guest Lounge
-                </h2>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Sign in or create your member profile to unlock exclusive rates, instant booking management, and VIP concierge privileges.
-                </p>
-              </div>
+        {/* Modal Header */}
+        <div className="relative z-10 flex items-start justify-between pb-4 border-b border-slate-800/80">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20 flex-shrink-0">
+              <IconCrown size={22} />
             </div>
-
-            <div className="space-y-3 py-6 hidden sm:block">
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-500/20">
-                  <IconCrown size={16} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-200">VIP Member Rates</div>
-                  <div className="text-[10px] text-slate-400">Up to 25% off oceanfront villas & penthouses</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-500/20">
-                  <IconCalendar size={16} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-200">Express Digital Check-In</div>
-                  <div className="text-[10px] text-slate-400">Instant keyless folio access & receipt history</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0 border border-purple-500/20">
-                  <IconSparkles size={16} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-200">24/7 AI Concierge</div>
-                  <div className="text-[10px] text-slate-400">Instant room dining, spa booking & butler chat</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800/80 text-[11px] text-slate-400">
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <IconShield size={14} />
-                <span className="font-semibold">256-Bit SSL Encrypted</span>
-              </span>
-              <span className="font-mono text-[10px] text-slate-500">Verified Hospitality</span>
+            <div>
+              <h2 className="font-serif text-lg sm:text-xl font-bold tracking-wide text-slate-100 flex items-center gap-2">
+                AURELIA RESORT
+                <span className="text-[10px] text-amber-400 font-mono font-normal tracking-widest border border-amber-400/30 px-1.5 py-0.5 rounded">
+                  5★ LUXE
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                {customerAuthModalMode === 'google'
+                  ? 'Google Single Sign-On'
+                  : customerAuthModalMode === 'verify-email'
+                  ? 'Email Verification'
+                  : customerAuthModalMode === 'forgot'
+                  ? 'Password Recovery'
+                  : customerAuthModalMode === 'verify-otp'
+                  ? 'Verify Reset Code'
+                  : customerAuthModalMode === 'reset'
+                  ? 'Create New Password'
+                  : 'Exclusive Member & Guest Sanctuary'}
+              </p>
             </div>
           </div>
 
-          <div className="lg:col-span-7 p-6 sm:p-8 lg:p-10 flex flex-col justify-between space-y-5 bg-slate-900/40">
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-100">
-                    {mode === 'login'
-                      ? 'Welcome Back'
-                      : mode === 'register'
-                      ? 'Join Aurelia Luxury Club'
-                      : mode === 'forgot'
-                      ? 'Forgot Password'
-                      : 'Set New Password'}
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    {mode === 'login'
-                      ? 'Access your guest dashboard & reservations'
-                      : mode === 'register'
-                      ? 'Create your customer account in under a minute'
-                      : mode === 'forgot'
-                      ? 'Enter your email to receive a password reset token'
-                      : 'Create your new secure account password'}
-                  </p>
-                </div>
+          <button
+            onClick={closeCustomerAuthModal}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors"
+            aria-label="Close Authentication Modal"
+          >
+            <IconX size={20} />
+          </button>
+        </div>
 
+        {/* Modal Scrollable Body */}
+        <div className="relative z-10 overflow-y-auto py-5 space-y-5 flex-1 pr-1 custom-scrollbar">
+          {/* ========================================================
+              VIEW 1: TABS (LOGIN / REGISTER)
+             ======================================================== */}
+          {(customerAuthModalMode === 'login' || customerAuthModalMode === 'register') && (
+            <>
+              {/* Tab Switcher */}
+              <div className="grid grid-cols-2 p-1 bg-slate-950/80 rounded-2xl border border-slate-800">
                 <button
-                  onClick={closeCustomerAuthModal}
-                  className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors flex-shrink-0"
-                  aria-label="Close modal"
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('login');
+                    setCustomerAuthModalMode('login');
+                    setFormErrors({});
+                  }}
+                  className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
+                    activeTab === 'login'
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md shadow-amber-400/20 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
                 >
-                  <IconX size={20} />
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('register');
+                    setCustomerAuthModalMode('register');
+                    setFormErrors({});
+                  }}
+                  className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
+                    activeTab === 'register'
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md shadow-amber-400/20 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Create Account
                 </button>
               </div>
 
-              {(mode === 'login' || mode === 'register') && (
-                <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
+              {/* TAB 1: LOGIN FORM */}
+              {activeTab === 'login' && (
+                <form onSubmit={handleLoginSubmit} className="space-y-4 animate-fade-in">
+                  {/* Google Login Button */}
                   <button
                     type="button"
                     onClick={() => {
-                      setMode('login');
-                      setError('');
+                      setFormErrors({});
+                      setCustomerAuthModalMode('google');
                     }}
-                    className={`py-2.5 rounded-xl transition-all ${
-                      mode === 'login'
-                        ? 'bg-amber-400 text-slate-950 font-extrabold shadow-md shadow-amber-400/20'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    className="w-full py-3 bg-slate-950 hover:bg-slate-800/90 border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold text-slate-200 transition-all flex items-center justify-center gap-3 shadow-md active:scale-[0.99]"
+                    id="btn-google-login"
                   >
-                    Customer Sign In
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('register');
-                      setError('');
-                    }}
-                    className={`py-2.5 rounded-xl transition-all ${
-                      mode === 'register'
-                        ? 'bg-amber-400 text-slate-950 font-extrabold shadow-md shadow-amber-400/20'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    New Registration
-                  </button>
-                </div>
-              )}
-
-              {(mode === 'login' || mode === 'register') && (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleGoogleAuthClick}
-                    className="w-full flex items-center justify-center gap-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-semibold py-3 px-4 rounded-2xl transition-all shadow-sm group"
-                  >
-                    <svg className="w-4 h-4 transition-transform group-hover:scale-110 flex-shrink-0" viewBox="0 0 24 24">
-                      <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.4 8.9 5 12 5z" />
-                      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z" />
-                      <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.6 7.2C.6 9.2 0 11.5 0 14s.6 4.8 1.6 6.8l3.7-2.9z" />
-                      <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.4-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" />
-                    </svg>
-                    <span>Continue with Google / Gmail ID</span>
+                    <IconGoogle size={18} />
+                    <span>Continue with Google</span>
                   </button>
 
                   <div className="relative flex items-center justify-center">
                     <div className="border-t border-slate-800 w-full" />
-                    <span className="bg-slate-900 px-3 text-[10px] uppercase font-bold text-slate-500 tracking-widest absolute">
-                      OR EMAIL & PASSWORD
+                    <span className="bg-slate-900 px-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Or with Email & Password
                     </span>
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="bg-rose-500/15 border border-rose-500/40 text-rose-300 p-3.5 rounded-xl text-xs flex items-center justify-between gap-2 animate-fade-in">
-                  <span>{error}</span>
-                  <button onClick={() => setError('')} className="text-rose-400 hover:text-rose-200 flex-shrink-0">
-                    <IconX size={14} />
-                  </button>
-                </div>
-              )}
-
-              {mode === 'login' && (
-                <form onSubmit={handleLoginSubmit} className="space-y-3.5 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Username or Email Address *</label>
-                    <div className="relative">
-                      <IconMail size={16} className="absolute left-3.5 top-3 text-slate-400" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. ibrahim or guest@resort.com"
-                        value={usernameOrEmail}
-                        onChange={(e) => setUsernameOrEmail(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 pl-10 pr-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
-                      />
-                    </div>
+                    <div className="border-t border-slate-800 w-full" />
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-slate-300">Security Password *</label>
+                  {/* Email Field */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Email Address <span className="text-amber-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      placeholder="e.g. guest@resort.com"
+                      className={`w-full bg-slate-950 border ${
+                        formErrors.loginEmail ? 'border-rose-500' : 'border-slate-800'
+                      } focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors`}
+                    />
+                    {formErrors.loginEmail && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.loginEmail}</p>
+                    )}
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Password <span className="text-amber-400">*</span>
+                      </label>
                       <button
                         type="button"
                         onClick={() => {
-                          setMode('forgot');
-                          setError('');
+                          setPendingEmail(loginEmail);
+                          setCustomerAuthModalMode('forgot');
                         }}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold"
+                        className="text-[11px] text-amber-400 hover:text-amber-300 font-medium transition-colors"
                       >
                         Forgot Password?
                       </button>
                     </div>
                     <div className="relative">
-                      <IconLock size={16} className="absolute left-3.5 top-3 text-slate-400" />
                       <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 pl-10 pr-12 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 font-mono"
+                        type={showLoginPassword ? 'text' : 'password'}
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••••••"
+                        className={`w-full bg-slate-950 border ${
+                          formErrors.loginPassword ? 'border-rose-500' : 'border-slate-800'
+                        } focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors pr-10`}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-200 text-xs"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                       >
-                        {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                        {showLoginPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                       </button>
                     </div>
+                    {formErrors.loginPassword && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.loginPassword}</p>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-slate-300 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="accent-amber-400 rounded"
-                      />
-                      <span>Remember my session</span>
+                  {/* Remember Me Checkbox */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-amber-500 focus:ring-amber-400 focus:ring-offset-slate-900 cursor-pointer accent-amber-500"
+                    />
+                    <label htmlFor="rememberMe" className="text-xs text-slate-300 cursor-pointer select-none">
+                      Remember my login session
                     </label>
                   </div>
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 text-xs font-extrabold py-3.5 rounded-2xl shadow-lg shadow-amber-500/25 transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={isLoading}
+                    className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all transform active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <IconSparkles size={16} />
-                    <span>{isSubmitting ? 'Authenticating...' : 'Sign In to Customer Portal'}</span>
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <IconCrown size={16} />
+                        <span>Sign In to Customer Lounge</span>
+                      </>
+                    )}
                   </button>
                 </form>
               )}
 
-              {mode === 'register' && (
-                <form onSubmit={handleRegisterSubmit} className="space-y-3 text-xs">
+              {/* TAB 2: REGISTER FORM */}
+              {activeTab === 'register' && (
+                <form onSubmit={handleRegisterSubmit} className="space-y-3.5 animate-fade-in">
+                  {/* Full Name */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Full Name <span className="text-amber-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="e.g. John Smith"
+                      className={`w-full bg-slate-950 border ${
+                        formErrors.regName ? 'border-rose-500' : 'border-slate-800'
+                      } focus:border-amber-400 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors`}
+                    />
+                    {formErrors.regName && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.regName}</p>
+                    )}
+                  </div>
+
+                  {/* Email Address */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Email Address <span className="text-amber-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="e.g. john.smith@domain.com"
+                      className={`w-full bg-slate-950 border ${
+                        formErrors.regEmail ? 'border-rose-500' : 'border-slate-800'
+                      } focus:border-amber-400 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors`}
+                    />
+                    {formErrors.regEmail && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.regEmail}</p>
+                    )}
+                  </div>
+
+                  {/* Phone Number & Country Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-300 mb-1">Full Legal Name *</label>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-300">Phone Number</label>
                       <input
-                        type="text"
-                        required
-                        placeholder="e.g. Muhammed Ibrahim"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
+                        type="tel"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="+1 (555) 019-2834"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors"
                       />
                     </div>
 
-                    <div>
-                      <label className="block font-semibold text-slate-300 mb-1">Select Username *</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-slate-500 font-bold">@</span>
-                        <input
-                          type="text"
-                          required
-                          placeholder="ibrahim786"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                          className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 pl-7 pr-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 font-mono"
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-300">Country / Region</label>
+                      <select
+                        value={regCountry}
+                        onChange={(e) => setRegCountry(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none cursor-pointer"
+                      >
+                        {COUNTRIES.map((c) => (
+                          <option key={c} value={c} className="bg-slate-900 text-white">
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Password + Strength Meter */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Create Password <span className="text-amber-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showRegPassword ? 'text' : 'password'}
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="At least 6 characters"
+                        className={`w-full bg-slate-950 border ${
+                          formErrors.regPassword ? 'border-rose-500' : 'border-slate-800'
+                        } focus:border-amber-400 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors pr-10`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      >
+                        {showRegPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                      </button>
+                    </div>
+
+                    {/* Dynamic Password Strength Progress Bar */}
+                    {regPassword && (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-slate-400 font-medium">Password Strength:</span>
+                          <span
+                            className={`font-bold ${
+                              passwordStrength.score === 1
+                                ? 'text-rose-400'
+                                : passwordStrength.score === 2
+                                ? 'text-amber-400'
+                                : passwordStrength.score === 3
+                                ? 'text-sky-400'
+                                : 'text-emerald-400'
+                            }`}
+                          >
+                            {passwordStrength.label}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                          <div
+                            className={`h-full ${passwordStrength.color} transition-all duration-300 rounded-full`}
+                            style={{ width: passwordStrength.width }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {formErrors.regPassword && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.regPassword}</p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Confirm Password <span className="text-amber-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showRegConfirmPassword ? 'text' : 'password'}
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="Re-enter your password"
+                        className={`w-full bg-slate-950 border ${
+                          formErrors.regConfirmPassword ? 'border-rose-500' : 'border-slate-800'
+                        } focus:border-amber-400 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors pr-10`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      >
+                        {showRegConfirmPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                      </button>
+                    </div>
+                    {regConfirmPassword && regPassword === regConfirmPassword && (
+                      <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                        <IconCheck size={13} />
+                        <span>Passwords match</span>
+                      </div>
+                    )}
+                    {formErrors.regConfirmPassword && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.regConfirmPassword}</p>
+                    )}
+                  </div>
+
+                  {/* Terms & Conditions Checkbox */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        id="agreeTerms"
+                        checked={agreeTerms}
+                        onChange={(e) => setAgreeTerms(e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded border-slate-700 bg-slate-950 text-amber-500 focus:ring-amber-400 focus:ring-offset-slate-900 cursor-pointer accent-amber-500"
+                      />
+                      <label htmlFor="agreeTerms" className="text-[11px] text-slate-300 leading-snug cursor-pointer select-none">
+                        I agree to the{' '}
+                        <span className="text-amber-400 underline">Terms of Hospitality & Privacy Policy</span>.
+                      </label>
+                    </div>
+                    {formErrors.agreeTerms && (
+                      <p className="text-[11px] text-rose-400 font-medium">{formErrors.agreeTerms}</p>
+                    )}
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all transform active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <IconCrown size={16} />
+                        <span>Register Member Account</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </>
+          )}
+
+          {/* ========================================================
+              VIEW 2: GOOGLE SINGLE SIGN-ON (INTEGRATED)
+             ======================================================== */}
+          {customerAuthModalMode === 'google' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="text-center space-y-1.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 mx-auto flex items-center justify-center shadow-lg">
+                  <IconGoogle size={24} />
+                </div>
+                <h3 className="font-serif text-lg font-bold text-slate-100">Sign in with Google</h3>
+                <p className="text-xs text-slate-400">
+                  Quick, secure one-click authentication to Aurelia Resort
+                </p>
+              </div>
+
+              <form onSubmit={handleGoogleSubmit} className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Google / Gmail Address <span className="text-amber-400">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={customGoogleEmail}
+                    onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                    placeholder="e.g. yourname@gmail.com"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors"
+                    autoFocus
+                  />
+                  {formErrors.googleEmail && (
+                    <p className="text-[11px] text-rose-400 font-medium">{formErrors.googleEmail}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-300">Full Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={customGoogleName}
+                    onChange={(e) => setCustomGoogleName(e.target.value)}
+                    placeholder="e.g. John Smith"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <IconGoogle size={16} />
+                      <span>Continue with Google</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="pt-2 border-t border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCustomerAuthModalMode('login')}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <IconArrowLeft size={14} />
+                  <span>Back to Email Sign In</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              VIEW 3: EMAIL VERIFICATION OTP SCREEN
+             ======================================================== */}
+          {customerAuthModalMode === 'verify-email' && (
+            <div className="space-y-5 animate-fade-in">
+              <div className="text-center space-y-1.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+                  <IconShieldCheck size={24} />
+                </div>
+                <h3 className="font-serif text-lg font-bold text-slate-100">Verify Your Email Address</h3>
+                <p className="text-xs text-slate-400">
+                  Please enter the 6-digit verification code sent to:
+                </p>
+                <div className="font-mono text-xs text-amber-400 font-semibold bg-slate-950 py-1 px-3 rounded-lg border border-slate-800 inline-block">
+                  {pendingEmail}
+                </div>
+              </div>
+
+              {/* Debug OTP Chip for Live Testing */}
+              {debugOtpCode && (
+                <div
+                  onClick={() => {
+                    const digits = debugOtpCode.split('');
+                    setOtpDigits(digits);
+                  }}
+                  className="bg-amber-400/10 border border-amber-400/30 text-amber-300 p-2.5 rounded-xl text-xs text-center cursor-pointer hover:bg-amber-400/20 transition-all font-mono"
+                >
+                  ⚡ Click to autofill test code: <span className="font-bold underline">{debugOtpCode}</span>
+                </div>
+              )}
+
+              {/* 6 OTP Input Boxes */}
+              <form onSubmit={handleVerifyEmailSubmit} className="space-y-4">
+                <div className="flex justify-center gap-2 sm:gap-3">
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => (otpInputRefs.current[idx] = el)}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      className="w-10 h-12 sm:w-12 sm:h-14 bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl text-center text-lg font-bold font-mono text-amber-400 focus:outline-none transition-colors"
+                      autoFocus={idx === 0}
+                    />
+                  ))}
+                </div>
+
+                {formErrors.otp && (
+                  <p className="text-center text-[11px] text-rose-400 font-medium">{formErrors.otp}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <IconCheck size={16} />
+                      <span>Verify Email & Enter Resort</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Resend Code Section */}
+              <div className="text-center text-xs text-slate-400">
+                {canResend ? (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors"
+                  >
+                    Resend 6-Digit Code
+                  </button>
+                ) : (
+                  <span>Resend code in {otpTimer}s</span>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCustomerAuthModalMode('login')}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <IconArrowLeft size={14} />
+                  <span>Back to Sign In</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              VIEW 4: FORGOT PASSWORD (ENTER EMAIL)
+             ======================================================== */}
+          {customerAuthModalMode === 'forgot' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="text-center space-y-1">
+                <h3 className="font-serif text-lg font-bold text-slate-100">Password Recovery</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Enter your registered email address to receive a secure 6-digit verification code.
+                </p>
+              </div>
+
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Registered Email Address <span className="text-amber-400">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={pendingEmail}
+                    onChange={(e) => setPendingEmail(e.target.value)}
+                    placeholder="e.g. yourname@domain.com"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors"
+                    autoFocus
+                  />
+                  {formErrors.forgotEmail && (
+                    <p className="text-[11px] text-rose-400 font-medium">{formErrors.forgotEmail}</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>Send Verification Code</span>
+                  )}
+                </button>
+              </form>
+
+              <div className="pt-2 border-t border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCustomerAuthModalMode('login')}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <IconArrowLeft size={14} />
+                  <span>Back to Sign In</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              VIEW 5: VERIFY RESET OTP
+             ======================================================== */}
+          {customerAuthModalMode === 'verify-otp' && (
+            <div className="space-y-5 animate-fade-in">
+              <div className="text-center space-y-1.5">
+                <h3 className="font-serif text-lg font-bold text-slate-100">Enter Reset OTP Code</h3>
+                <p className="text-xs text-slate-400">
+                  Enter the 6-digit password reset code sent to:
+                </p>
+                <div className="font-mono text-xs text-amber-400 font-semibold bg-slate-950 py-1 px-3 rounded-lg border border-slate-800 inline-block">
+                  {pendingEmail}
+                </div>
+              </div>
+
+              {debugOtpCode && (
+                <div
+                  onClick={() => {
+                    const digits = debugOtpCode.split('');
+                    setOtpDigits(digits);
+                  }}
+                  className="bg-amber-400/10 border border-amber-400/30 text-amber-300 p-2.5 rounded-xl text-xs text-center cursor-pointer hover:bg-amber-400/20 transition-all font-mono"
+                >
+                  ⚡ Click to autofill reset code: <span className="font-bold underline">{debugOtpCode}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyResetOtpSubmit} className="space-y-4">
+                <div className="flex justify-center gap-2 sm:gap-3">
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => (otpInputRefs.current[idx] = el)}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      className="w-10 h-12 sm:w-12 sm:h-14 bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl text-center text-lg font-bold font-mono text-amber-400 focus:outline-none transition-colors"
+                      autoFocus={idx === 0}
+                    />
+                  ))}
+                </div>
+
+                {formErrors.otp && (
+                  <p className="text-center text-[11px] text-rose-400 font-medium">{formErrors.otp}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>Verify Code & Continue</span>
+                  )}
+                </button>
+              </form>
+
+              <div className="pt-2 border-t border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCustomerAuthModalMode('forgot')}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <IconArrowLeft size={14} />
+                  <span>Change Email</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              VIEW 6: CREATE NEW PASSWORD
+             ======================================================== */}
+          {customerAuthModalMode === 'reset' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="text-center space-y-1">
+                <h3 className="font-serif text-lg font-bold text-slate-100">Create New Password</h3>
+                <p className="text-xs text-slate-400">
+                  Choose a secure new password for your Aurelia account.
+                </p>
+              </div>
+
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+                {/* New Password */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    New Password <span className="text-amber-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors pr-10"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    >
+                      {showNewPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                    </button>
+                  </div>
+
+                  {newPassword && (
+                    <div className="space-y-1 pt-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400">Strength:</span>
+                        <span className="font-bold text-amber-400">{newPasswordStrength.label}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                        <div
+                          className={`h-full ${newPasswordStrength.color} transition-all duration-300 rounded-full`}
+                          style={{ width: newPasswordStrength.width }}
                         />
                       </div>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-300 mb-1">Email Address *</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="guest@resort.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-300 mb-1">Phone Number</label>
-                      <input
-                        type="text"
-                        placeholder="+1 (555) 786-0199"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/60 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="font-semibold text-slate-300">Choose Password *</label>
-                        {password && (
-                          <span className="text-[10px] font-bold text-amber-400">
-                            {passwordStrength.text}
-                          </span>
-                        )}
-                      </div>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        placeholder="Min 6 characters"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/60 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-300 mb-1">Confirm Password *</label>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        placeholder="Re-enter password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/60 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-1">
-                    <label className="flex items-start gap-2 cursor-pointer text-slate-400 text-[11px] leading-tight">
-                      <input
-                        type="checkbox"
-                        required
-                        checked={acceptTerms}
-                        onChange={(e) => setAcceptTerms(e.target.checked)}
-                        className="accent-amber-400 mt-0.5 rounded"
-                      />
-                      <span>
-                        I accept the <strong className="text-slate-200">Terms of Luxury Stay</strong> and <strong className="text-slate-200">Privacy Charter</strong>.
-                      </span>
-                    </label>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 text-xs font-extrabold py-3.5 rounded-2xl shadow-lg shadow-amber-500/25 transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <IconCheckCircle size={16} />
-                    <span>{isSubmitting ? 'Registering Account...' : 'Complete Customer Registration'}</span>
-                  </button>
-                </form>
-              )}
-
-              {mode === 'forgot' && (
-                <form onSubmit={handleForgotSubmit} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Your Registered Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="pmmuhammedibrahim786@gmail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/60"
-                    />
-                  </div>
-
-                  {generatedResetCode && (
-                    <div className="bg-amber-500/10 border border-amber-500/40 p-4 rounded-2xl space-y-2">
-                      <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
-                        🔐 SIMULATED RESET CODE DISPATCHED
-                      </div>
-                      <div className="text-sm font-mono font-bold text-slate-100">
-                        Reset Code: <span className="text-amber-400">{generatedResetCode}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setMode('reset')}
-                        className="w-full py-2 bg-amber-400 text-slate-950 font-bold rounded-xl text-xs"
-                      >
-                        Proceed to Reset Password →
-                      </button>
-                    </div>
                   )}
 
-                  {!generatedResetCode && (
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 text-xs font-extrabold py-3.5 rounded-2xl shadow-lg transition-all"
-                    >
-                      {isSubmitting ? 'Generating Token...' : 'Send Password Reset Link'}
-                    </button>
+                  {formErrors.newPassword && (
+                    <p className="text-[11px] text-rose-400 font-medium">{formErrors.newPassword}</p>
                   )}
+                </div>
 
-                  <div className="text-center pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setMode('login')}
-                      className="text-xs text-slate-400 hover:text-slate-200 underline"
-                    >
-                      Back to Sign In
-                    </button>
-                  </div>
-                </form>
-              )}
+                {/* Confirm New Password */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Confirm New Password <span className="text-amber-400">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Re-enter your new password"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none transition-colors"
+                  />
+                  {confirmNewPassword && newPassword === confirmNewPassword && (
+                    <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                      <IconCheck size={13} />
+                      <span>Passwords match</span>
+                    </div>
+                  )}
+                  {formErrors.confirmNewPassword && (
+                    <p className="text-[11px] text-rose-400 font-medium">{formErrors.confirmNewPassword}</p>
+                  )}
+                </div>
 
-              {mode === 'reset' && (
-                <form onSubmit={handleResetSubmit} className="space-y-3.5 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Reset Verification Code *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. RESET-786"
-                      value={resetToken}
-                      onChange={(e) => setResetToken(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl font-mono focus:outline-none focus:border-amber-500/60"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">New Password (Min 6 chars) *</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl font-mono focus:outline-none focus:border-amber-500/60"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Confirm New Password *</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl font-mono focus:outline-none focus:border-amber-500/60"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 text-xs font-extrabold py-3.5 rounded-2xl shadow-lg transition-all"
-                  >
-                    {isSubmitting ? 'Updating Password...' : 'Save New Password & Log In'}
-                  </button>
-
-                  <div className="text-center pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setMode('login')}
-                      className="text-xs text-slate-400 hover:text-slate-200 underline"
-                    >
-                      Cancel and Return to Sign In
-                    </button>
-                  </div>
-                </form>
-              )}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>Change Password & Sign In</span>
+                  )}
+                </button>
+              </form>
             </div>
+          )}
+        </div>
 
-            {(mode === 'login' || mode === 'register') && (
-              <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
-                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  <span>1-Click Fast VIP Demo Logins:</span>
-                  <span className="text-amber-400">Pre-Verified</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handle1ClickDemoLogin('pmmuhammedibrahim786@gmail.com', 'customerpassword123')
-                    }
-                    className="bg-slate-950 hover:bg-slate-800 border border-amber-500/30 hover:border-amber-400 p-2.5 rounded-xl text-left transition-all group"
-                  >
-                    <div className="text-[11px] font-bold text-slate-100 group-hover:text-amber-400 truncate flex items-center gap-1">
-                      <span>Muhammed Ibrahim</span>
-                      <span className="text-[9px] text-amber-400">👑</span>
-                    </div>
-                    <div className="text-[9px] text-amber-400 font-semibold truncate">
-                      Diamond VIP • Suite 401
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handle1ClickDemoLogin('alexander.wright@royals.co.uk', 'customerpassword123')
-                    }
-                    className="bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-left transition-all group"
-                  >
-                    <div className="text-[11px] font-bold text-slate-100 group-hover:text-amber-400 truncate">
-                      Lord Alexander
-                    </div>
-                    <div className="text-[9px] text-slate-400 truncate">Gold VIP Member</div>
-                  </button>
-                </div>
-              </div>
-            )}
-
+        {/* Modal Security Footer */}
+        <div className="relative z-10 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+          <div className="flex items-center gap-1.5">
+            <IconShieldCheck size={13} className="text-amber-400" />
+            <span>256-Bit SSL Encrypted Hospitality Identity</span>
           </div>
+          <span>Aurelia Sanctuary</span>
         </div>
       </div>
     </div>

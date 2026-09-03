@@ -1,22 +1,30 @@
 import React, { useState } from 'react';
 import { useHotel } from '../context/HotelContext';
-import { IconCrown, IconGlobe, IconSparkles, IconX, IconBed, IconTrendingUp, IconUsers } from './Icons';
+import { IconCrown, IconGlobe, IconSparkles, IconX, IconBed, IconTrendingUp, IconUsers, IconLock } from './Icons';
 
 export const AdminLogin = () => {
-  const { loginAdmin, registerAdmin, setPortalMode, openGoogleModal, isSocketConnected } = useHotel();
+  const { loginAdmin, registerAdmin, setPortalMode, openGoogleModal, isSocketConnected, verify2FAAndLogin } = useHotel();
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
-  
-  const [name, setName] = useState('Muhammed Ibrahim');
-  const [username, setUsername] = useState('manager');
-  const [usernameOrEmail, setUsernameOrEmail] = useState('pmmuhammedibrahim786@gmail.com');
-  const [email, setEmail] = useState('pmmuhammedibrahim786@gmail.com');
-  const [password, setPassword] = useState('adminpassword123');
+
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('Manager'); // 'Manager' | 'Receptionist' | 'Housekeeping'
   const [department, setDepartment] = useState('Operations');
-  
+
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMessage, setForgotMessage] = useState('');
+
+  // 2FA State
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorToken, setTwoFactorToken] = useState('');
+  const [tempEmail, setTempEmail] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,10 +37,16 @@ export const AdminLogin = () => {
       }
 
       setIsLoading(true);
-      const success = await loginAdmin(usernameOrEmail, password);
+      const res = await loginAdmin(usernameOrEmail, password);
       setIsLoading(false);
 
-      if (!success) {
+      if (res?.requires2FA) {
+        setRequires2FA(true);
+        setTempEmail(res.email || usernameOrEmail);
+        return;
+      }
+
+      if (!res) {
         setError('Authentication failed. Check your credentials or use quick demo buttons below.');
       }
     } else {
@@ -79,6 +93,91 @@ export const AdminLogin = () => {
     });
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await res.json();
+      setForgotMessage(data.message || 'If an account exists, an email was sent.');
+    } catch (err) {
+      setForgotMessage('Failed to connect to server.');
+    }
+    setIsLoading(false);
+  };
+
+  const handle2FASubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!twoFactorToken) return setError('Please enter your 2FA token.');
+    
+    setIsLoading(true);
+    const success = await verify2FAAndLogin(tempEmail, twoFactorToken);
+    setIsLoading(false);
+    
+    if (!success) {
+      setError('Invalid 2FA token. Please try again.');
+    }
+  };
+
+  if (requires2FA) {
+    return (
+      <div className="relative min-h-screen w-full flex items-center justify-center p-3 sm:p-6 lg:p-10 overflow-x-hidden text-slate-100 font-sans">
+        <div className="fixed inset-0 bg-cover bg-center scale-105" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80')` }} />
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md" />
+        
+        <div className="relative z-10 w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border border-amber-500/30 rounded-[28px] p-8 shadow-2xl animate-scale-up">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/20 text-amber-400">
+              <IconLock size={32} />
+            </div>
+            <h2 className="text-2xl font-bold font-serif text-slate-100">Two-Factor Authentication</h2>
+            <p className="text-sm text-slate-400 mt-2">Enter the 6-digit code from your authenticator app.</p>
+          </div>
+          
+          <form onSubmit={handle2FASubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">
+                {error}
+              </div>
+            )}
+            
+            <div className="space-y-1.5">
+              <input
+                type="text"
+                value={twoFactorToken}
+                onChange={(e) => setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 text-center text-3xl tracking-[1em] font-mono text-slate-100 focus:outline-none focus:border-amber-500/50 transition-all placeholder:text-slate-700"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={isLoading || twoFactorToken.length < 6}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+            >
+              {isLoading ? 'Verifying...' : 'Verify Token'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => { setRequires2FA(false); setTwoFactorToken(''); setError(''); }}
+              className="w-full py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              Back to Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center p-3 sm:p-6 lg:p-10 overflow-x-hidden text-slate-100 font-sans">
       {/* Background Image with Dark Luxury Blur */}
@@ -100,7 +199,7 @@ export const AdminLogin = () => {
       {/* Main Luxury 2-Column Wide Login Modal Container */}
       <div className="relative z-10 w-full max-w-4xl lg:max-w-5xl bg-slate-900/90 backdrop-blur-2xl border border-amber-500/30 rounded-[28px] sm:rounded-[36px] shadow-2xl overflow-hidden my-4 sm:my-8 animate-scale-up">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
-          
+
           {/* LEFT COLUMN: Luxury Showcase & Branding (Hidden on small mobile, visible >= lg) */}
           <div className="lg:col-span-5 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 sm:p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80">
             {/* Ambient Background Graphic */}
@@ -179,7 +278,7 @@ export const AdminLogin = () => {
 
           {/* RIGHT COLUMN: Interactive Authentication Form */}
           <div className="lg:col-span-7 p-6 sm:p-8 lg:p-10 flex flex-col justify-between space-y-5 bg-slate-900/40">
-            
+
             {/* Top Switcher: Sign In vs Staff Registration */}
             <div className="space-y-4">
               <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800">
@@ -189,11 +288,10 @@ export const AdminLogin = () => {
                     setAuthMode('login');
                     setError('');
                   }}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                    authMode === 'login'
+                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${authMode === 'login'
                       ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
                       : 'text-slate-400 hover:text-slate-200'
-                  }`}
+                    }`}
                 >
                   Staff Sign In
                 </button>
@@ -203,11 +301,10 @@ export const AdminLogin = () => {
                     setAuthMode('register');
                     setError('');
                   }}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                    authMode === 'register'
+                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${authMode === 'register'
                       ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
                       : 'text-slate-400 hover:text-slate-200'
-                  }`}
+                    }`}
                 >
                   Staff Sign Up
                 </button>
@@ -222,11 +319,10 @@ export const AdminLogin = () => {
                       key={r}
                       type="button"
                       onClick={() => handleRoleFill(r)}
-                      className={`py-2 text-[11px] font-bold rounded-xl transition-all truncate px-1 ${
-                        role === r
+                      className={`py-2 text-[11px] font-bold rounded-xl transition-all truncate px-1 ${role === r
                           ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                      }`}
+                        }`}
                     >
                       {r}
                     </button>
@@ -343,16 +439,25 @@ export const AdminLogin = () => {
                       {authMode === 'register' ? 'Choose Password (Min 6 chars) *' : 'Password *'}
                     </label>
                     {authMode === 'login' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPassword('adminpassword123');
-                          setError('Auto-filled Password: adminpassword123');
-                        }}
-                        className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline"
-                      >
-                        Reset Demo Pass
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotModal(true)}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline"
+                        >
+                          Forgot Password?
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPassword('adminpassword123');
+                            setError('Auto-filled Password: adminpassword123');
+                          }}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline"
+                        >
+                          Reset Demo Pass
+                        </button>
+                      </div>
                     )}
                   </div>
                   <input
@@ -382,8 +487,8 @@ export const AdminLogin = () => {
                     {isLoading
                       ? 'Authenticating...'
                       : authMode === 'login'
-                      ? `Sign In as ${role}`
-                      : `Create ${role} Account`}
+                        ? `Sign In as ${role}`
+                        : `Create ${role} Account`}
                   </span>
                 </button>
               </form>
@@ -436,6 +541,31 @@ export const AdminLogin = () => {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl p-5 text-slate-100">
+            <h3 className="text-lg font-bold text-amber-400 mb-2">Reset Password</h3>
+            <p className="text-xs text-slate-400 mb-4">Enter your staff email address to receive a password reset link.</p>
+            {forgotMessage && <div className="text-xs mb-3 text-emerald-400">{forgotMessage}</div>}
+            <form onSubmit={handleForgotPassword} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/60"
+                placeholder="Staff Email"
+              />
+              <div className="flex gap-2 justify-end pt-2">
+                <button type="button" onClick={() => {setShowForgotModal(false); setForgotMessage('');}} className="text-xs px-3 py-2 text-slate-400 hover:text-slate-200">Cancel</button>
+                <button type="submit" disabled={isLoading} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl">Send Link</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

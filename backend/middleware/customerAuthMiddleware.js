@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'aurelia_super_secret_jwt_key_2026'
  * Sign Customer JWT Token
  */
 export const signCustomerToken = (payload, expiresIn = '30d') => {
-  return jwt.sign({ ...payload, role: 'Customer' }, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 };
 
 /**

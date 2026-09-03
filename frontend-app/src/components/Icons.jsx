@@ -399,4 +399,56 @@ export const IconTv = ({ size = 20, className = "" }) => (
   </svg>
 );
 
+export const IconGoogle = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+    <path
+      fill="#EA4335"
+      d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+    />
+    <path
+      fill="#4285F4"
+      d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-2.9z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.4C3.7 20.4 7.5 23 12 23z"
+    />
+  </svg>
+);
+
+export const IconShieldCheck = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+);
+
+export const IconArrowLeft = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+);
+
+export const IconUser = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+export const DEFAULT_AVATAR_URL = "data:image/svg+xml;utf8,<svg viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg'><circle cx='64' cy='64' r='64' fill='%23E2E8F0'/><circle cx='64' cy='46' r='22' fill='%23718096'/><path d='M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z' fill='%23718096'/></svg>";
+
+export const IconDefaultProfileLogo = ({ size = 40, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 128 128" className={className}>
+    <circle cx="64" cy="64" r="64" fill="#E2E8F0" />
+    <circle cx="64" cy="46" r="22" fill="#718096" />
+    <path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="#718096" />
+  </svg>
+);
+
 

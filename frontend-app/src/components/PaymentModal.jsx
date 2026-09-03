@@ -22,30 +22,118 @@ export const PaymentModal = ({ isOpen, onClose, bookingData, onPaymentSuccess })
 
   const totalAmount = bookingData.totalAmount || bookingData.price || 1200;
 
-  const handlePay = (e) => {
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePaymentSuccess = () => {
+    setIsProcessing(false);
+    setIsSuccess(true);
+
+    if (updateBookingPaymentStatus) {
+      updateBookingPaymentStatus(bookingData.id, 'Paid');
+    }
+
+    if (onPaymentSuccess) {
+      onPaymentSuccess({ ...bookingData, paymentStatus: 'Paid', gateway });
+    }
+
+    if (addToast) {
+      addToast(`Payment of $${totalAmount.toLocaleString()} completed successfully!`, 'success');
+    }
+
+    setTimeout(() => {
+      setIsSuccess(false);
+      onClose();
+    }, 1600);
+  };
+
+  const handlePay = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
 
+    if (gateway === 'razorpay') {
+      const res = await loadRazorpayScript();
+      if (!res) {
+        if (addToast) addToast('Razorpay SDK failed to load. Are you online?', 'error');
+        setIsProcessing(false);
+        return;
+      }
+
+      try {
+        const orderRes = await fetch('http://localhost:5000/api/payment/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: totalAmount, bookingId: bookingData.id })
+        });
+        const orderData = await orderRes.json();
+        
+        if (!orderData.success) {
+          throw new Error('Failed to create payment order');
+        }
+
+        const options = {
+          key: 'your_razorpay_key_id', // Must be replaced with real key in production
+          amount: orderData.data?.amount || orderData.order?.amount || totalAmount * 100,
+          currency: 'INR',
+          name: 'Aurelia Resort',
+          description: `Payment for Booking ${bookingData.id}`,
+          order_id: orderData.data?.id || orderData.order?.id || orderData.data?.orderId,
+          handler: async function (response) {
+            try {
+              const verifyRes = await fetch('http://localhost:5000/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...response,
+                  bookingId: bookingData.id,
+                  amount: totalAmount
+                })
+              });
+              const verifyData = await verifyRes.json();
+              if (verifyData.success) {
+                handlePaymentSuccess();
+              } else {
+                if (addToast) addToast('Payment verification failed', 'error');
+                setIsProcessing(false);
+              }
+            } catch (err) {
+              if (addToast) addToast('Payment verification failed', 'error');
+              setIsProcessing(false);
+            }
+          },
+          prefill: {
+            name: formData.cardName,
+            email: 'guest@example.com',
+            contact: '9999999999'
+          },
+          theme: {
+            color: '#F59E0B'
+          }
+        };
+        const paymentObject = new window.Razorpay(options);
+        paymentObject.open();
+        paymentObject.on('payment.failed', function (response) {
+          if (addToast) addToast('Payment failed: ' + response.error.description, 'error');
+          setIsProcessing(false);
+        });
+        return; // Wait for Razorpay handler
+      } catch (err) {
+        if (addToast) addToast(err.message, 'error');
+        setIsProcessing(false);
+        return;
+      }
+    }
+
+    // Default mock behavior for other gateways (Stripe)
     setTimeout(() => {
-      setIsProcessing(false);
-      setIsSuccess(true);
-
-      if (updateBookingPaymentStatus) {
-        updateBookingPaymentStatus(bookingData.id, 'Paid');
-      }
-
-      if (onPaymentSuccess) {
-        onPaymentSuccess({ ...bookingData, paymentStatus: 'Paid', gateway });
-      }
-
-      if (addToast) {
-        addToast(`Payment of $${totalAmount.toLocaleString()} completed successfully!`, 'success');
-      }
-
-      setTimeout(() => {
-        setIsSuccess(false);
-        onClose();
-      }, 1600);
+      handlePaymentSuccess();
     }, 1200);
   };
 

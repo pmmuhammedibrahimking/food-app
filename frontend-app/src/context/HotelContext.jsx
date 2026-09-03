@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/apiClient.js';
 
 const HotelContext = createContext();
 
@@ -811,13 +812,31 @@ export const HotelProvider = ({ children }) => {
     localStorage.setItem('hotel_dining_orders', JSON.stringify(diningOrders));
   }, [diningOrders]);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('hotel_auth') === 'true';
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hotel_user') || localStorage.getItem('customer_user') || localStorage.getItem('auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
   });
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('hotel_user');
-    return saved ? JSON.parse(saved) : { name: 'General Manager', email: 'admin@aureliagrand.com', role: 'General Manager' };
+  const [userRole, setUserRole] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hotel_user') || localStorage.getItem('customer_user') || localStorage.getItem('auth_user');
+      const parsed = saved ? JSON.parse(saved) : null;
+      return parsed?.role || localStorage.getItem('user_role') || 'Guest';
+    } catch (e) {
+      return 'Guest';
+    }
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const hasAuth = localStorage.getItem('hotel_auth') === 'true' || localStorage.getItem('customer_auth') === 'true';
+    const role = localStorage.getItem('user_role');
+    const saved = localStorage.getItem('hotel_user') || localStorage.getItem('customer_user') || localStorage.getItem('auth_user');
+    const isStaffOrAdmin = role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'staff' || role.toLowerCase() === 'manager' || role.toLowerCase() === 'receptionist' || role.toLowerCase() === 'housekeeping');
+    return (hasAuth || isStaffOrAdmin) && !!saved;
   });
 
   const [isGuestAuthenticated, setIsGuestAuthenticated] = useState(() => {
@@ -943,6 +962,29 @@ export const HotelProvider = ({ children }) => {
     return { success: true, guest: newGuest };
   };
 
+  const verify2FAAndLogin = async (email, token) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/auth/2fa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, isSetup: false })
+      });
+      const data = await res.json();
+      if (data.success && data.token) {
+        const role = data.role || data.user?.role || 'Admin';
+        syncAuthUser(data.user, data.token, role);
+        addToast(data.message || `2FA Verified. Welcome back!`, 'success');
+        return true;
+      } else {
+        addToast(data.message || 'Invalid 2FA token', 'error');
+        return false;
+      }
+    } catch (err) {
+      addToast('Error verifying 2FA token', 'error');
+      return false;
+    }
+  };
+
   const registerAdmin = async ({ name, email, password, role = 'Manager', department = 'Operations' }) => {
     if (!name || !email || !password) {
       addToast('Please fill all required fields.', 'error');
@@ -1042,6 +1084,43 @@ export const HotelProvider = ({ children }) => {
 
   const [jwtToken, setJwtToken] = useState(() => localStorage.getItem('hotel_jwt_token') || '');
 
+  const syncAuthUser = (userData, token, role) => {
+    if (!userData) return;
+    const assignedRole = role || userData.role || 'Guest';
+    const userObj = { ...userData, role: assignedRole };
+    const effectiveRole = assignedRole.toLowerCase();
+
+    setCurrentUser(userObj);
+    setUserRole(assignedRole);
+    if (token) setJwtToken(token);
+
+    localStorage.setItem('hotel_user', JSON.stringify(userObj));
+    localStorage.setItem('customer_user', JSON.stringify(userObj));
+    localStorage.setItem('auth_user', JSON.stringify(userObj));
+    localStorage.setItem('user_role', assignedRole);
+    if (token) {
+      localStorage.setItem('hotel_jwt_token', token);
+      localStorage.setItem('customer_jwt_token', token);
+      localStorage.setItem('jwt_token', token);
+    }
+
+    if (effectiveRole === 'admin') {
+      setIsAuthenticated(true);
+      localStorage.setItem('hotel_auth', 'true');
+      setPortalMode('admin');
+      setActiveTab('dashboard');
+    } else if (effectiveRole === 'staff' || ['manager', 'receptionist', 'housekeeping'].includes(effectiveRole)) {
+      setIsAuthenticated(true);
+      localStorage.setItem('hotel_auth', 'true');
+      setPortalMode('staff');
+      setActiveTab('dashboard');
+    } else {
+      setIsAuthenticated(false);
+      localStorage.setItem('hotel_auth', 'false');
+      setPortalMode('guest');
+    }
+  };
+
   const loginAdmin = async (loginIdentifier, password) => {
     if (!loginIdentifier || !password) {
       addToast('Please enter both username/email and password.', 'error');
@@ -1054,50 +1133,64 @@ export const HotelProvider = ({ children }) => {
       const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           email: cleanIdentifier.includes('@') ? cleanIdentifier : undefined,
           username: !cleanIdentifier.includes('@') ? cleanIdentifier : undefined,
           identifier: cleanIdentifier,
-          password 
+          password
         })
       });
 
       const data = await res.json();
+      if (data.requires2FA) {
+        return { requires2FA: true, email: data.email || cleanIdentifier };
+      }
       if (data.success && data.token) {
-        setIsAuthenticated(true);
-        setCurrentUser(data.user);
-        setJwtToken(data.token);
-        localStorage.setItem('hotel_auth', 'true');
-        localStorage.setItem('hotel_user', JSON.stringify(data.user));
-        localStorage.setItem('hotel_jwt_token', data.token);
-        addToast(data.message || `Welcome back, ${data.user.name}! Authenticated as ${data.user.role}.`, 'success');
+        const role = data.role || data.user?.role || 'Admin';
+        syncAuthUser(data.user, data.token, role);
+        addToast(data.message || `Welcome back, ${data.user.name}! Authenticated as ${role}.`, 'success');
         return true;
       } else {
         addToast(data.message || 'Invalid username, email, or password.', 'error');
         return false;
       }
     } catch (err) {
-      // Fallback local auth for demo
-      const role = cleanIdentifier.includes('reception') ? 'Receptionist' : cleanIdentifier.includes('housekeeping') ? 'Housekeeping' : 'Manager';
-      const name = role === 'Manager' ? 'Muhammed Ibrahim (GM)' : role === 'Receptionist' ? 'Sarah Jenkins' : 'Maria Garcia';
-      const email = cleanIdentifier.includes('@') ? cleanIdentifier : `${cleanIdentifier}@aureliahotel.com`;
-      const user = { name, username: cleanIdentifier.replace('@aureliahotel.com', ''), email, role };
-      setIsAuthenticated(true);
-      setCurrentUser(user);
-      localStorage.setItem('hotel_auth', 'true');
-      localStorage.setItem('hotel_user', JSON.stringify(user));
-      addToast(`Welcome back, ${name}! Logged into ${role} console.`, 'success');
+      console.warn('Backend offline, authenticating locally:', err.message);
+      const role = cleanIdentifier.includes('admin')
+        ? 'Admin'
+        : cleanIdentifier.includes('reception')
+        ? 'Receptionist'
+        : cleanIdentifier.includes('housekeeping')
+        ? 'Housekeeping'
+        : 'Staff';
+      const cleanName = cleanIdentifier.includes('@')
+        ? cleanIdentifier.split('@')[0].replace('.', ' ')
+        : cleanIdentifier;
+      const name = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+      const email = cleanIdentifier.includes('@') ? cleanIdentifier : `${cleanIdentifier}@aureliagrand.com`;
+      const user = { name, username: cleanIdentifier.replace('@aureliagrand.com', ''), email, role };
+      syncAuthUser(user, `jwt_${Date.now()}`, role);
+      addToast(`Welcome back, ${name}! Logged in as ${role}.`, 'success');
       return true;
     }
   };
 
   const logoutAdmin = () => {
     setIsAuthenticated(false);
+    setCurrentUser(null);
+    setUserRole('Guest');
     setJwtToken('');
     localStorage.removeItem('hotel_auth');
+    localStorage.removeItem('customer_auth');
     localStorage.removeItem('hotel_user');
+    localStorage.removeItem('customer_user');
+    localStorage.removeItem('auth_user');
     localStorage.removeItem('hotel_jwt_token');
-    addToast('You have been logged out of the Operations Portal.', 'info');
+    localStorage.removeItem('customer_jwt_token');
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_role');
+    setPortalMode('guest');
+    addToast('You have been signed out.', 'info');
   };
 
   // Sync state to LocalStorage
@@ -1130,18 +1223,28 @@ export const HotelProvider = ({ children }) => {
   };
 
   // Actions
-  const updateRoomStatus = (roomNumber, newStatus) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.number === roomNumber ? { ...r, status: newStatus } : r))
-    );
-    addToast(`Room ${roomNumber} status updated to ${newStatus}`, 'success');
+  const updateRoomStatus = async (roomNumber, newStatus) => {
+    try {
+      await api.put(`/api/rooms/${roomNumber}/status`, { status: newStatus });
+      setRooms((prev) =>
+        prev.map((r) => (r.number === roomNumber ? { ...r, status: newStatus } : r))
+      );
+      addToast(`Room ${roomNumber} status updated to ${newStatus}`, 'success');
+    } catch (e) {
+      addToast(e.message || 'Failed to update room status', 'error');
+    }
   };
 
-  const updateRoomPrice = (roomNumber, newPrice) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.number === roomNumber ? { ...r, price: Number(newPrice) } : r))
-    );
-    addToast(`Room ${roomNumber} price updated to $${newPrice}/night!`, 'success');
+  const updateRoomPrice = async (roomNumber, newPrice) => {
+    try {
+      await api.patch(`/api/rooms/${roomNumber}/price`, { price: Number(newPrice) });
+      setRooms((prev) =>
+        prev.map((r) => (r.number === roomNumber ? { ...r, price: Number(newPrice) } : r))
+      );
+      addToast(`Room ${roomNumber} price updated to $${newPrice}/night!`, 'success');
+    } catch(e) {
+      addToast(e.message || 'Failed to update room price', 'error');
+    }
   };
 
   const addGuestNote = (guestId, noteText) => {
@@ -1174,114 +1277,128 @@ export const HotelProvider = ({ children }) => {
     addToast('Guest preferences updated successfully!', 'success');
   };
 
-  const addRoom = (roomData) => {
-    const newRoom = {
-      ...roomData,
-      id: String(Date.now()),
-      status: roomData.status || 'Available'
-    };
-    setRooms((prev) => [newRoom, ...prev]);
-    addToast(`Room ${roomData.number} successfully added!`, 'success');
+  const addRoom = async (roomData) => {
+    try {
+      const res = await api.post('/api/rooms', roomData);
+      const newRoom = res.data || res.room || res;
+      setRooms((prev) => [newRoom, ...prev]);
+      addToast(`Room ${roomData.number} successfully added!`, 'success');
+    } catch(e) {
+      addToast(e.message || 'Failed to add room', 'error');
+    }
   };
 
-  const checkInGuest = (bookingId) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (!booking) return;
-
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'Checked-In' } : b))
-    );
-    updateRoomStatus(booking.roomNumber, 'Occupied');
-    addToast(`Guest ${booking.guestName} successfully checked into Room ${booking.roomNumber}!`, 'success');
-  };
-
-  const checkOutGuest = (bookingId) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (!booking) return;
-
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'Checked-Out' } : b))
-    );
-    updateRoomStatus(booking.roomNumber, 'Cleaning');
-
-    // Add HK task
-    const newTask = {
-      id: `HK-${Date.now()}`,
-      roomNumber: booking.roomNumber,
-      type: 'Departure Turnaround Clean',
-      assignee: 'Unassigned',
-      priority: 'High',
-      status: 'Cleaning'
-    };
-    setHousekeeping((prev) => [newTask, ...prev]);
-    addToast(`Guest ${booking.guestName} checked out. Room ${booking.roomNumber} set to Cleaning.`, 'info');
-  };
-
-  const addBooking = (newBookingData) => {
-    const newId = `BK-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newBooking = {
-      ...newBookingData,
-      id: newId,
-      status: newBookingData.status || 'Confirmed',
-      paymentStatus: newBookingData.paymentStatus || 'Paid',
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    setBookings((prev) => [newBooking, ...prev]);
-    updateRoomStatus(newBookingData.roomNumber, 'Reserved');
-
-    // Register guest if not existing
-    const existingGuest = guests.find((g) => g.email.toLowerCase() === newBookingData.guestEmail.toLowerCase());
-    if (!existingGuest) {
-      const newGuest = {
-        id: `G-${Date.now()}`,
-        name: newBookingData.guestName,
-        email: newBookingData.guestEmail,
-        phone: newBookingData.guestPhone || 'N/A',
-        vipStatus: 'Standard',
-        stays: 1,
-        totalSpent: newBookingData.totalAmount,
-        preferences: newBookingData.specialRequests || 'None'
-      };
-      setGuests((prev) => [newGuest, ...prev]);
-    } else {
-      setGuests((prev) =>
-        prev.map((g) =>
-          g.id === existingGuest.id
-            ? { ...g, stays: g.stays + 1, totalSpent: g.totalSpent + newBookingData.totalAmount }
-            : g
-        )
+  const checkInGuest = async (bookingId) => {
+    try {
+      await api.post(`/api/bookings/${bookingId}/checkin`);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'Checked-In' } : b))
       );
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (booking) updateRoomStatus(booking.roomNumber, 'Occupied');
+      addToast(`Guest successfully checked in!`, 'success');
+    } catch (e) {
+      addToast(e.message || 'Check-in failed', 'error');
     }
-
-    addToast(`Reservation #${newId} confirmed for ${newBookingData.guestName}!`, 'success');
-    sendGmailConfirmation(newBooking);
-    return newBooking;
   };
 
-  const cancelBooking = (bookingId) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (!booking) return;
-
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'Cancelled' } : b))
-    );
-    updateRoomStatus(booking.roomNumber, 'Available');
-    addToast(`Booking ${bookingId} has been cancelled.`, 'warning');
-  };
-
-  const deleteBooking = (bookingId) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (booking) {
-      updateRoomStatus(booking.roomNumber, 'Available');
+  const checkOutGuest = async (bookingId) => {
+    try {
+      await api.post(`/api/bookings/${bookingId}/checkout`);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'Checked-Out' } : b))
+      );
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (booking) {
+        updateRoomStatus(booking.roomNumber, 'Cleaning');
+        const newTask = {
+          id: `HK-${Date.now()}`,
+          roomNumber: booking.roomNumber,
+          type: 'Departure Turnaround Clean',
+          assignee: 'Unassigned',
+          priority: 'High',
+          status: 'Cleaning'
+        };
+        setHousekeeping((prev) => [newTask, ...prev]);
+      }
+      addToast(`Guest checked out successfully!`, 'info');
+    } catch (e) {
+      addToast(e.message || 'Check-out failed', 'error');
     }
-    setBookings((prev) => prev.filter((b) => b.id !== bookingId));
-    addToast(`Booking ${bookingId} permanently deleted!`, 'error');
   };
 
-  const deleteRoom = (roomNumber) => {
-    setRooms((prev) => prev.filter((r) => r.number !== roomNumber));
-    addToast(`Room ${roomNumber} removed from hotel inventory!`, 'error');
+  const addBooking = async (newBookingData) => {
+    try {
+      const res = await api.post('/api/bookings', newBookingData);
+      const newBooking = res.booking || res.data || res;
+      setBookings((prev) => [newBooking, ...prev]);
+      updateRoomStatus(newBookingData.roomNumber, 'Reserved');
+      
+      const existingGuest = guests.find((g) => g.email.toLowerCase() === newBookingData.guestEmail.toLowerCase());
+      if (!existingGuest) {
+        const newGuest = {
+          id: `G-${Date.now()}`,
+          name: newBookingData.guestName,
+          email: newBookingData.guestEmail,
+          phone: newBookingData.guestPhone || 'N/A',
+          vipStatus: 'Standard',
+          stays: 1,
+          totalSpent: newBookingData.totalAmount,
+          preferences: newBookingData.specialRequests || 'None'
+        };
+        setGuests((prev) => [newGuest, ...prev]);
+      } else {
+        setGuests((prev) =>
+          prev.map((g) =>
+            g.id === existingGuest.id
+              ? { ...g, stays: g.stays + 1, totalSpent: g.totalSpent + newBookingData.totalAmount }
+              : g
+          )
+        );
+      }
+      addToast(`Reservation confirmed for ${newBookingData.guestName}!`, 'success');
+      sendGmailConfirmation(newBooking);
+      return newBooking;
+    } catch (e) {
+      addToast(e.message || 'Failed to add booking', 'error');
+      return null;
+    }
+  };
+
+  const cancelBooking = async (bookingId) => {
+    try {
+      await api.post(`/api/bookings/${bookingId}/cancel`);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'Cancelled' } : b))
+      );
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (booking) updateRoomStatus(booking.roomNumber, 'Available');
+      addToast(`Booking ${bookingId} has been cancelled.`, 'warning');
+    } catch (e) {
+      addToast(e.message || 'Failed to cancel booking', 'error');
+    }
+  };
+
+  const deleteBooking = async (bookingId) => {
+    try {
+      await api.delete(`/api/bookings/${bookingId}`);
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (booking) updateRoomStatus(booking.roomNumber, 'Available');
+      setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+      addToast(`Booking ${bookingId} permanently deleted!`, 'error');
+    } catch (e) {
+      addToast(e.message || 'Failed to delete booking', 'error');
+    }
+  };
+
+  const deleteRoom = async (roomNumber) => {
+    try {
+      await api.delete(`/api/rooms/${roomNumber}`);
+      setRooms((prev) => prev.filter((r) => r.number !== roomNumber));
+      addToast(`Room ${roomNumber} removed from hotel inventory!`, 'error');
+    } catch(e) {
+      addToast(e.message || 'Failed to delete room', 'error');
+    }
   };
 
   const deleteGuest = async (guestId) => {
@@ -1570,9 +1687,15 @@ export const HotelProvider = ({ children }) => {
         openGoogleModal,
         closeGoogleModal,
         isAuthenticated,
+        setIsAuthenticated,
         currentUser,
+        setCurrentUser,
+        userRole,
+        setUserRole,
+        syncAuthUser,
         jwtToken,
         loginAdmin,
+        verify2FAAndLogin,
         registerAdmin,
         logoutAdmin,
         isGuestAuthenticated,

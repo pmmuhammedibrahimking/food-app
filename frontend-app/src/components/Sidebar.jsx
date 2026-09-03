@@ -14,7 +14,8 @@ import {
   IconTrendingUp,
   IconX,
   IconChevronLeft,
-  IconChevronRight
+  IconChevronRight,
+  IconLogOut
 } from './Icons';
 
 export const Sidebar = ({ isOpen, onClose }) => {
@@ -28,47 +29,54 @@ export const Sidebar = ({ isOpen, onClose }) => {
     housekeeping = [],
     diningOrders = [],
     currentUser,
+    userRole,
+    logoutAdmin,
     resetAllData
   } = useHotel();
   const { t } = useTranslation();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const activeBookingsCount = bookings.filter(b => b.status === 'Checked-In' || b.status === 'Confirmed').length;
-  const pendingCleaningCount = housekeeping.filter(h => h.status !== 'Completed').length;
-  const pendingOrdersCount = diningOrders.filter(o => o.status !== 'Delivered').length;
+  const activeBookingsCount = bookings.filter((b) => b.status === 'Checked-In' || b.status === 'Confirmed').length;
+  const pendingCleaningCount = housekeeping.filter((h) => h.status !== 'Completed').length;
+  const pendingOrdersCount = diningOrders.filter((o) => o.status !== 'Delivered').length;
 
-  const currentRole = portalMode === 'guest' ? 'Guest' : (currentUser?.role || 'Admin');
+  const effectiveRole = (currentUser?.role || userRole || 'Admin').toLowerCase();
+  const isAdmin = effectiveRole === 'admin' || effectiveRole === 'general manager';
 
   // Role-Based Authorized Navigation Items Pool
   const getNavItemsForRole = () => {
-    const isGuestMode = portalMode === 'guest' || currentRole === 'Guest';
-
     const allItems = {
-      dashboard: { id: 'dashboard', label: t('dashboard'), icon: IconDashboard, category: 'Operations' },
-      analytics: { id: 'analytics', label: t('analytics'), icon: IconSparkles, category: 'Operations' },
-      calendar: { id: 'calendar', label: t('calendar'), icon: IconCalendar, category: 'Operations' },
+      dashboard: { id: 'dashboard', label: t('dashboard') || 'Dashboard', icon: IconDashboard, category: 'Operations' },
+      analytics: { id: 'analytics', label: t('analytics') || 'Analytics', icon: IconSparkles, category: 'Operations' },
+      calendar: { id: 'calendar', label: t('calendar') || 'Calendar', icon: IconCalendar, category: 'Operations' },
       rooms: {
         id: 'rooms',
-        label: t('rooms'),
+        label: t('rooms') || 'Rooms',
         icon: IconBed,
-        badge: `${rooms.filter(r => r.status === 'Available').length} free`,
+        badge: `${rooms.filter((r) => r.status === 'Available').length} free`,
         category: 'Operations'
       },
       bookings: {
         id: 'bookings',
-        label: isGuestMode ? 'My Bookings' : t('bookings'),
+        label: t('bookings') || 'Bookings',
         icon: IconCalendar,
         badge: activeBookingsCount > 0 ? activeBookingsCount : null,
         category: 'Operations'
       },
-      guests: { id: 'guests', label: t('guests'), icon: IconUsers, category: 'Operations' },
+      guests: { id: 'guests', label: t('guests') || 'Guest Ledger', icon: IconUsers, category: 'Operations' },
       housekeeping: {
         id: 'housekeeping',
-        label: t('housekeeping'),
+        label: t('housekeeping') || 'Housekeeping',
         icon: IconSparkles,
         badge: pendingCleaningCount > 0 ? pendingCleaningCount : null,
         category: 'Operations'
+      },
+      kitchen: {
+        id: 'kitchen',
+        label: 'Kitchen Display',
+        icon: IconUtensils,
+        category: 'Services'
       },
       dining: {
         id: 'dining',
@@ -77,31 +85,65 @@ export const Sidebar = ({ isOpen, onClose }) => {
         badge: pendingOrdersCount > 0 ? pendingOrdersCount : null,
         category: 'Services'
       },
-      reports: { id: 'reports', label: t('reports') || 'Reports Engine', icon: IconTrendingUp, category: 'Operations' },
-      guestportal: { id: 'guestportal', label: 'Guest Portal', icon: IconGlobe, category: 'Customer Portal' }
+      staff: {
+        id: 'staff',
+        label: 'Staff Management',
+        icon: IconUsers,
+        category: 'Administration'
+      },
+      reports: {
+        id: 'reports',
+        label: t('reports') || 'Financial Reports',
+        icon: IconTrendingUp,
+        category: 'Administration'
+      },
+      guestportal: {
+        id: 'guestportal',
+        label: 'Customer Storefront',
+        icon: IconGlobe,
+        category: 'Portals'
+      }
     };
 
     let allowedIds = [];
-    switch (currentRole) {
-      case 'Manager':
-        allowedIds = ['dashboard', 'rooms', 'bookings', 'guests', 'analytics', 'calendar', 'reports'];
-        break;
-      case 'Receptionist':
-        allowedIds = ['bookings', 'guests', 'rooms', 'dining'];
-        break;
-      case 'Housekeeping':
-        allowedIds = ['housekeeping', 'rooms'];
-        break;
-      case 'Guest':
-        allowedIds = ['guestportal', 'bookings', 'dining'];
-        break;
-      case 'Admin':
-      default:
-        allowedIds = ['dashboard', 'analytics', 'calendar', 'rooms', 'bookings', 'guests', 'housekeeping', 'dining', 'reports', 'guestportal'];
-        break;
+    if (isAdmin) {
+      allowedIds = [
+        'dashboard',
+        'analytics',
+        'calendar',
+        'rooms',
+        'bookings',
+        'guests',
+        'housekeeping',
+        'kitchen',
+        'dining',
+        'staff',
+        'reports',
+        'guestportal'
+      ];
+    } else if (effectiveRole === 'manager') {
+      allowedIds = [
+        'dashboard',
+        'calendar',
+        'rooms',
+        'bookings',
+        'guests',
+        'housekeeping',
+        'kitchen',
+        'dining',
+        'reports',
+        'guestportal'
+      ];
+    } else if (effectiveRole === 'receptionist') {
+      allowedIds = ['dashboard', 'bookings', 'guests', 'rooms', 'dining', 'calendar', 'guestportal'];
+    } else if (effectiveRole === 'housekeeping') {
+      allowedIds = ['housekeeping', 'rooms', 'guestportal'];
+    } else {
+      // General Staff
+      allowedIds = ['dashboard', 'calendar', 'rooms', 'bookings', 'guests', 'housekeeping', 'kitchen', 'dining', 'guestportal'];
     }
 
-    return allowedIds.map(id => allItems[id]).filter(Boolean);
+    return allowedIds.map((id) => allItems[id]).filter(Boolean);
   };
 
   const navItems = getNavItemsForRole();
@@ -110,8 +152,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     if (tabId === 'guestportal') {
       setPortalMode('guest');
     } else {
-      if (portalMode === 'guest' && tabId !== 'guestportal') {
-        // Switch back to admin if choosing admin tab
+      if (portalMode === 'guest') {
         setPortalMode('admin');
       }
       setActiveTab(tabId);
@@ -121,132 +162,139 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Mobile Drawer Backdrop Overlay */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <div
+          className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
         />
       )}
 
-      {/* Sidebar Navigation Drawer */}
+      {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-slate-900/95 border-r border-slate-800/80 backdrop-blur-md p-4 flex flex-col justify-between transform transition-all duration-300 ease-in-out lg:static lg:translate-x-0 lg:flex-shrink-0 ${
-          isOpen ? 'translate-x-0 w-64 shadow-2xl' : '-translate-x-full lg:translate-x-0'
-        } ${isCollapsed ? 'lg:w-20' : 'lg:w-64 xl:w-72'}`}
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${isCollapsed ? 'w-20' : 'w-64'} p-4`}
       >
-        <div>
-          {/* Brand Header */}
-          <div className="flex items-center justify-between pb-6 border-b border-slate-800/80 mb-6">
-            <div className={`flex items-center ${isCollapsed ? 'lg:justify-center lg:w-full' : 'gap-3'}`}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-amber-500/20 flex-shrink-0">
-                <IconCrown size={22} />
-              </div>
-              {(!isCollapsed || isOpen) && (
-                <div className="min-w-0">
-                  <div className="text-base font-extrabold tracking-wider text-amber-400 font-serif whitespace-nowrap">
-                    AURELIA
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-medium tracking-wide whitespace-nowrap">
-                    {currentRole} Console
-                  </div>
-                </div>
-              )}
+        {/* Sidebar Header: Brand & Collapse Toggle */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800/80">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 flex-shrink-0">
+              <IconCrown size={20} />
             </div>
-
-            {/* Desktop Collapse/Expand Toggle */}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-              className="hidden lg:flex items-center justify-center text-slate-400 hover:text-slate-100 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              {isCollapsed ? <IconChevronRight size={18} /> : <IconChevronLeft size={18} />}
-            </button>
-
-            {/* Mobile / Tablet Close Button */}
-            <button
-              onClick={onClose}
-              className="lg:hidden text-slate-400 hover:text-slate-100 p-1.5 rounded-lg hover:bg-slate-800"
-            >
-              <IconX size={20} />
-            </button>
+            {(!isCollapsed || isOpen) && (
+              <div className="min-w-0 animate-fade-in">
+                <div className="font-serif text-sm font-bold tracking-wider text-slate-100 uppercase truncate">
+                  AURELIA
+                </div>
+                <div className="text-[10px] text-amber-400 font-mono tracking-widest uppercase flex items-center gap-1 truncate">
+                  <span>{isAdmin ? 'ADMIN CONSOLE' : 'STAFF CONSOLE'}</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Role Indicator Badge */}
-          {(!isCollapsed || isOpen) && (
-            <div className="mb-4 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-medium">Role:</span>
-              <span className="font-extrabold text-amber-400 uppercase tracking-wider text-[11px]">{currentRole}</span>
+          {/* Desktop Collapse Toggle */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:flex p-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-400 hover:text-amber-400 border border-slate-800 transition-colors"
+            title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            {isCollapsed ? <IconChevronRight size={16} /> : <IconChevronLeft size={16} />}
+          </button>
+
+          {/* Mobile Close Button */}
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        {/* Logged In Admin / Staff Profile Badge */}
+        {(!isCollapsed || isOpen) && (
+          <div className="mt-3 p-3 bg-slate-950/60 border border-amber-500/20 rounded-2xl flex items-center gap-3 animate-fade-in">
+            <div className="relative flex-shrink-0">
+              <img
+                src={currentUser?.avatar || 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'}
+                alt={currentUser?.name || 'Admin'}
+                className="w-9 h-9 rounded-full object-cover border border-amber-400 shadow-sm"
+              />
+              <span className="absolute -bottom-1 -right-1 p-0.5 bg-slate-950 border border-amber-400 rounded-full text-amber-400">
+                <IconCrown size={8} />
+              </span>
             </div>
-          )}
-
-          {/* Navigation Menu */}
-          <nav className="space-y-4">
-            <div>
-              {(!isCollapsed || isOpen) && (
-                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-2">
-                  Navigation
-                </div>
-              )}
-
-              <div className="space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id || (item.id === 'guestportal' && portalMode === 'guest');
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      title={isCollapsed ? item.label : undefined}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-xl text-xs font-medium transition-all ${
-                        isActive
-                          ? 'bg-amber-500/15 text-amber-400 font-semibold border-l-4 border-amber-400 shadow-sm shadow-amber-500/10 pl-2.5'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                      } ${isCollapsed && !isOpen ? 'md:justify-center md:px-0' : ''}`}
-                    >
-                      <div className={`flex items-center ${isCollapsed && !isOpen ? 'md:justify-center' : 'gap-3'}`}>
-                        <Icon size={18} className={isActive ? 'text-amber-400' : 'text-slate-400'} />
-                        {(!isCollapsed || isOpen) && <span>{item.label}</span>}
-                      </div>
-
-                      {(!isCollapsed || isOpen) && item.badge !== undefined && item.badge !== null && (
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isActive
-                              ? 'bg-amber-400 text-slate-950'
-                              : 'bg-slate-800 text-slate-300 border border-slate-700'
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-100 truncate">{currentUser?.name || 'Administrator'}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">
+                  {currentUser?.role || (isAdmin ? 'Admin' : 'Staff')}
+                </span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Scrollable Navigation */}
+        <div className="flex-1 overflow-y-auto py-4 pr-1 space-y-1 custom-scrollbar">
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id && portalMode !== 'guest';
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all group ${
+                    isActive
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-extrabold shadow-md shadow-amber-400/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80'
+                  }`}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <Icon
+                    size={18}
+                    className={`flex-shrink-0 ${
+                      isActive ? 'text-slate-950' : 'text-slate-400 group-hover:text-amber-400 transition-colors'
+                    }`}
+                  />
+                  {(!isCollapsed || isOpen) && (
+                    <span className="truncate flex-1 text-left">{item.label}</span>
+                  )}
+                  {(!isCollapsed || isOpen) && item.badge !== undefined && item.badge !== null && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isActive ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-300 border border-slate-700'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
         {/* Sidebar Footer */}
-        <div className="pt-4 border-t border-slate-800/80 space-y-2">
+        <div className="pt-3 border-t border-slate-800/80 space-y-2">
           {!isCollapsed ? (
             <button
-              onClick={resetAllData}
-              title="Reset Demo Data"
-              className="w-full flex items-center justify-center gap-2 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-slate-100 text-xs font-semibold py-2.5 px-3 rounded-xl border border-slate-700/60 transition-all"
+              onClick={logoutAdmin}
+              className="w-full flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold py-2.5 px-3 rounded-xl border border-rose-500/30 transition-all"
             >
-              <IconRefresh size={14} />
-              <span>Reset Demo Data</span>
+              <IconLogOut size={14} />
+              <span>Sign Out of Console</span>
             </button>
           ) : (
             <button
-              onClick={resetAllData}
-              title="Reset Demo Data"
-              className="w-full flex items-center justify-center p-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-700/60 transition-all"
+              onClick={logoutAdmin}
+              title="Sign Out"
+              className="w-full flex items-center justify-center p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/30 transition-all"
             >
-              <IconRefresh size={16} />
+              <IconLogOut size={16} />
             </button>
           )}
         </div>

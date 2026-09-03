@@ -20,15 +20,15 @@ export const AuthModal = () => {
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
   
   // Guest inputs
-  const [email, setEmail] = useState('pmmuhammedibrahim786@gmail.com');
-  const [bookingId, setBookingId] = useState('BK-7860');
-  const [guestName, setGuestName] = useState('Muhammed Ibrahim');
-  const [phone, setPhone] = useState('+1 (555) 786-0199');
+  const [email, setEmail] = useState('');
+  const [bookingId, setBookingId] = useState('');
+  const [guestName, setGuestName] = useState('');
+  const [phone, setPhone] = useState('');
   
   // Staff inputs
-  const [staffEmail, setStaffEmail] = useState('pmmuhammedibrahim786@gmail.com');
-  const [staffPassword, setStaffPassword] = useState('adminpassword123');
-  const [staffName, setStaffName] = useState('Muhammed Ibrahim');
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
+  const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState('Manager');
   const [showPassword, setShowPassword] = useState(false);
 

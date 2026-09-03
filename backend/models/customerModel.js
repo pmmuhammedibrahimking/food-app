@@ -19,6 +19,10 @@ const customerSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    country: {
+      type: String,
+      default: 'United States'
+    },
     password: {
       type: String,
       required: [true, 'Please provide password'],
@@ -27,16 +31,26 @@ const customerSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+      default: 'data:image/svg+xml;utf8,<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><circle cx="64" cy="64" r="64" fill="%23E2E8F0"/><circle cx="64" cy="46" r="22" fill="%23718096"/><path d="M22 108C22 84.804 40.804 66 64 66C87.196 66 106 84.804 106 108V114C106 114 90 124 64 124C38 124 22 114 22 114V108Z" fill="%23718096"/></svg>'
     },
     role: {
       type: String,
-      default: 'Customer'
+      enum: ['Guest', 'Customer', 'Staff', 'Admin', 'Manager', 'Receptionist', 'Housekeeping'],
+      default: 'Guest'
+    },
+    membership: {
+      type: String,
+      enum: ['Standard', 'Silver', 'Gold', 'Diamond'],
+      default: 'Standard'
     },
     vipStatus: {
       type: String,
       enum: ['Standard', 'Silver', 'Gold', 'Diamond'],
       default: 'Standard'
+    },
+    rewardPoints: {
+      type: Number,
+      default: 100
     },
     address: {
       type: String,
@@ -52,7 +66,27 @@ const customerSchema = new mongoose.Schema(
     },
     favorites: {
       type: [String],
-      default: ['401', '301']
+      default: []
+    },
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    verificationOTP: {
+      type: String,
+      default: null
+    },
+    verificationExpires: {
+      type: Date,
+      default: null
+    },
+    resetPasswordOTP: {
+      type: String,
+      default: null
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null
     },
     notifications: [
       {
@@ -63,9 +97,7 @@ const customerSchema = new mongoose.Schema(
         timestamp: { type: String, default: () => new Date().toISOString() },
         read: { type: Boolean, default: false }
       }
-    ],
-    resetPasswordToken: String,
-    resetPasswordExpires: Date
+    ]
   },
   {
     timestamps: true
@@ -85,75 +117,10 @@ customerSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-export const Customer = mongoose.model('Customer', customerSchema);
+export const Customer = mongoose.models.Customer || mongoose.model('Customer', customerSchema);
 
-// In-Memory Fallback Store for seamless offline / demo operation
-export let inMemoryCustomers = [
-  {
-    _id: 'CUST-100',
-    id: 'CUST-100',
-    name: 'Muhammed Ibrahim',
-    email: 'pmmuhammedibrahim786@gmail.com',
-    phone: '+1 (555) 786-0199',
-    password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
-    rawPassword: 'customerpassword123',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    role: 'Customer',
-    vipStatus: 'Diamond',
-    address: '100 Oceanfront Promenade, Beverly Hills, CA',
-    foodPreferences: 'Vintage Dom Pérignon Champagne, Wagyu Steak, Fresh Espresso',
-    roomPreferences: 'Presidential Sovereign Suite 401, Private Balcony, High Floor',
-    favorites: ['401', '301', '101'],
-    notifications: [
-      {
-        id: 'CNOTIF-1',
-        title: 'Diamond VIP Welcome Privileges',
-        message: 'Your 24/7 dedicated butler service and private helipad access are active.',
-        type: 'vip',
-        timestamp: new Date().toISOString(),
-        read: false
-      },
-      {
-        id: 'CNOTIF-2',
-        title: 'Reservation Confirmed #BK-7860',
-        message: 'Penthouse Suite 401 reservation confirmed for Aug 20 - Aug 28.',
-        type: 'booking',
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        read: true
-      }
-    ],
-    createdAt: '2026-01-15T00:00:00.000Z',
-    updatedAt: new Date().toISOString()
-  },
-  {
-    _id: 'CUST-101',
-    id: 'CUST-101',
-    name: 'Lord Alexander Wright',
-    email: 'alexander.wright@royals.co.uk',
-    phone: '+44 7911 123456',
-    password: '$2a$10$e0MYzXyjpJS7Pd0RVvHwHeFj5d7KjK8D2mQzG1a.X1H1e1a1e1a1e',
-    rawPassword: 'customerpassword123',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-    role: 'Customer',
-    vipStatus: 'Gold',
-    address: '10 Kensington Palace Gardens, London, UK',
-    foodPreferences: 'Dom Pérignon on arrival, Caviar Omelette, Organic Gluten-free',
-    roomPreferences: 'High Floor Penthouse, Quiet Wing, Jacuzzi Suite',
-    favorites: ['401', '201'],
-    notifications: [
-      {
-        id: 'CNOTIF-3',
-        title: 'Gold VIP Status Active',
-        message: 'Enjoy complimentary Michelin breakfast and late 3 PM check-out privileges.',
-        type: 'vip',
-        timestamp: new Date().toISOString(),
-        read: false
-      }
-    ],
-    createdAt: '2026-02-10T00:00:00.000Z',
-    updatedAt: new Date().toISOString()
-  }
-];
+// In-Memory Fallback Store for seamless offline / testing operation
+export let inMemoryCustomers = [];
 
 export const findCustomerByEmail = async (email) => {
   return findCustomerByIdentifier(email);
@@ -188,35 +155,85 @@ export const findCustomerById = async (id) => {
   return inMemoryCustomers.find((c) => c._id === id || c.id === id) || null;
 };
 
-export const findCustomerByResetToken = async (token) => {
+export const findCustomerByResetOTP = async (otp, email = '') => {
+  const cleanOtp = String(otp).trim();
+  const cleanEmail = email ? email.trim().toLowerCase() : '';
   try {
     if (mongoose.connection.readyState === 1) {
-      return await Customer.findOne({
-        resetPasswordToken: token,
-        resetPasswordExpires: { $gt: Date.now() }
-      });
+      const query = {
+        resetPasswordOTP: cleanOtp,
+        resetPasswordExpires: { $gt: new Date() }
+      };
+      if (cleanEmail) query.email = cleanEmail;
+      return await Customer.findOne(query);
     }
   } catch (err) {
     console.warn('MongoDB query warning, checking fallback customer store:', err.message);
   }
   return (
     inMemoryCustomers.find(
-      (c) => c.resetPasswordToken === token && (!c.resetPasswordExpires || new Date(c.resetPasswordExpires) > new Date())
+      (c) =>
+        String(c.resetPasswordOTP) === cleanOtp &&
+        (!cleanEmail || c.email.toLowerCase() === cleanEmail) &&
+        (!c.resetPasswordExpires || new Date(c.resetPasswordExpires) > new Date())
     ) || null
   );
 };
 
-export const createCustomer = async ({ name, email, phone = '', password, avatar, vipStatus = 'Standard' }) => {
+export const findCustomerByVerificationOTP = async (otp, email = '') => {
+  const cleanOtp = String(otp).trim();
+  const cleanEmail = email ? email.trim().toLowerCase() : '';
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const query = {
+        verificationOTP: cleanOtp,
+        verificationExpires: { $gt: new Date() }
+      };
+      if (cleanEmail) query.email = cleanEmail;
+      return await Customer.findOne(query);
+    }
+  } catch (err) {
+    console.warn('MongoDB query warning, checking fallback store for OTP:', err.message);
+  }
+  return (
+    inMemoryCustomers.find(
+      (c) =>
+        String(c.verificationOTP) === cleanOtp &&
+        (!cleanEmail || c.email.toLowerCase() === cleanEmail) &&
+        (!c.verificationExpires || new Date(c.verificationExpires) > new Date())
+    ) || null
+  );
+};
+
+export const createCustomer = async ({
+  name,
+  email,
+  phone = '',
+  country = 'United States',
+  password,
+  avatar,
+  role = 'Guest',
+  membership = 'Standard',
+  isVerified = false,
+  verificationOTP = null,
+  verificationExpires = null
+}) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const customer = await Customer.create({
         name,
         email: email.toLowerCase(),
         phone,
+        country,
         password,
         avatar: avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-        role: 'Customer',
-        vipStatus
+        role: role || 'Guest',
+        membership: membership || 'Standard',
+        vipStatus: membership || 'Standard',
+        rewardPoints: 100,
+        isVerified,
+        verificationOTP,
+        verificationExpires
       });
       return customer;
     }
@@ -232,21 +249,27 @@ export const createCustomer = async ({ name, email, phone = '', password, avatar
     id: `CUST-${Date.now()}`,
     name,
     email: email.toLowerCase(),
-    phone: phone || 'N/A',
+    phone: phone || '',
+    country: country || 'United States',
     password: hashedPassword,
     rawPassword: password,
     avatar: avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    role: 'Customer',
-    vipStatus,
+    role: role || 'Guest',
+    membership: membership || 'Standard',
+    vipStatus: membership || 'Standard',
+    rewardPoints: 100,
     address: '',
     foodPreferences: 'Standard Gourmet',
     roomPreferences: 'Ocean View Balcony',
-    favorites: ['401'],
+    favorites: [],
+    isVerified,
+    verificationOTP,
+    verificationExpires,
     notifications: [
       {
         id: `CNOTIF-${Date.now()}`,
-        title: 'Welcome to Aurelia Grand Resort',
-        message: 'Your customer account is now active. Explore our luxury suites and villas.',
+        title: 'Welcome to Aurelia Resort',
+        message: 'Your account is active. Explore our luxury suites and villas.',
         type: 'info',
         timestamp: new Date().toISOString(),
         read: false

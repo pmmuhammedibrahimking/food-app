@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 
 import { connectDB } from './config/db.js';
 import healthRoutes from './routes/healthRoutes.js';
@@ -42,10 +43,25 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Rate Limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Limit each IP to 300 requests per window
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 auth requests per window
+  message: { success: false, message: 'Too many authentication attempts. Please try again later.' }
+});
+
+app.use(globalLimiter);
+
 // API Route Mounts
 app.use('/api/health', healthRoutes);
 app.use('/api/stats', statsRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/customer', customerAuthRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/guests', guestRoutes);
@@ -499,7 +515,7 @@ io.on('connection', (socket) => {
 // Real Email Confirmation Dispatch API Route
 app.post('/api/send-email', (req, res) => {
   const { recipientEmail, guestName, bookingId, roomNumber, totalAmount, checkIn, checkOut } = req.body;
-  const targetEmail = recipientEmail || 'pmmhammedibrahim@gmail.com';
+  const targetEmail = recipientEmail || 'pmmuhammedibrahim786@gmail.com';
   const senderHotelEmail = 'pmmuhammedibrahim786@gmail.com';
 
   console.log(`\n==================================================`);

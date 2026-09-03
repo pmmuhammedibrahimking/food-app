@@ -38,32 +38,29 @@ export const KitchenDisplay = () => {
         <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 self-stretch sm:self-auto">
           <button
             onClick={() => setFilterStatus('All')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              filterStatus === 'All'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterStatus === 'All'
                 ? 'bg-amber-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             All ({diningOrders.length})
           </button>
           <button
             onClick={() => setFilterStatus('Preparing')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              filterStatus === 'Preparing'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${filterStatus === 'Preparing'
                 ? 'bg-amber-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
             Preparing ({preparingCount})
           </button>
           <button
             onClick={() => setFilterStatus('Delivered')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              filterStatus === 'Delivered'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterStatus === 'Delivered'
                 ? 'bg-emerald-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             Delivered ({deliveredCount})
           </button>
@@ -79,8 +76,8 @@ export const KitchenDisplay = () => {
             {filterStatus === 'Preparing'
               ? 'No room service orders currently being prepared in the kitchen.'
               : filterStatus === 'Delivered'
-              ? 'No delivered orders in recent history.'
-              : 'Waiting for room service orders from guests...'}
+                ? 'No delivered orders in recent history.'
+                : 'Waiting for room service orders from guests...'}
           </p>
         </div>
       ) : (
@@ -92,11 +89,10 @@ export const KitchenDisplay = () => {
             return (
               <div
                 key={order.id}
-                className={`bg-slate-900 border rounded-2xl p-5 flex flex-col justify-between space-y-4 transition-all relative overflow-hidden ${
-                  isPreparing
+                className={`bg-slate-900 border rounded-2xl p-5 flex flex-col justify-between space-y-4 transition-all relative overflow-hidden ${isPreparing
                     ? 'border-amber-500/40 shadow-lg shadow-amber-500/5'
                     : 'border-slate-800 opacity-90'
-                }`}
+                  }`}
               >
                 {/* Top Banner */}
                 <div>
@@ -111,11 +107,10 @@ export const KitchenDisplay = () => {
                     </div>
 
                     <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
-                        isPreparing
+                      className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${isPreparing
                           ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                           : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                      }`}
+                        }`}
                     >
                       {isPreparing && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>}
                       {isDelivered && <IconCheckCircle size={14} />}

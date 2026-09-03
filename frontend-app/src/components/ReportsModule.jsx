@@ -319,6 +319,40 @@ export const ReportsModule = () => {
     if (addToast) addToast('Opened PDF Print Dialog!', 'info');
   };
 
+  const handleExportExcel = async () => {
+    if (!reportData || !reportData.rows || !reportData.rows.length) {
+      if (addToast) addToast('No records available to export.', 'warning');
+      return;
+    }
+    try {
+      if (addToast) addToast('Generating Excel report...', 'info');
+      const jwtToken = localStorage.getItem('hotel_jwt') || '';
+      const res = await fetch('http://localhost:5000/api/reports/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify({
+          rows: reportData.rows,
+          reportTitle: reportData.reportTitle || `${activeType}_Report`
+        })
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Aurelia_${activeType}_Report.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      if (addToast) addToast(`Exported ${activeType} report to Excel successfully!`, 'success');
+    } catch (err) {
+      if (addToast) addToast('Failed to export Excel report.', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Module Title & Actions Header */}
@@ -340,6 +374,13 @@ export const ReportsModule = () => {
           >
             <IconTrendingUp size={15} />
             <span>Export CSV</span>
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex-1 sm:flex-none bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-900 hover:border-emerald-500/50 text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
+          >
+            <IconTrendingUp size={15} />
+            <span>Export Excel</span>
           </button>
           <button
             onClick={handleExportPDF}
